@@ -1,13 +1,14 @@
 {% include 'layout.html' %}
 
 <div class="container mt-5">
-  <h3>
-    Hi there.
-  </h3>
-
   <div>
-    <div class="card text-center mt-3">
       <div class="card-body chat-history" id="chatHistory">
+        <div class="chat-message ai-response">
+          Hi! How's it going?
+        </div>
+        <div class="chat-message ai-response">
+          What can I help you with?
+        </div>
         <!-- auto populate here -->
         {% for response in chat_responses %}
 
@@ -16,14 +17,15 @@
         </div>
         {% endfor %}
       </div>
-    </div>
   </div>
 
   <div class="container" id="footer">
-    <div class="input-group mb-3">
-      <input class="form-control" placeholder="Add input here" id="userInput">
-      <button class="btn btn-outline-primary" type="button" id="sendButton">Send</button>
-    </div>
+    <form>
+      <fieldset role="group">
+        <input class="form-control" placeholder="Add input here" id="userInput">
+        <button class="btn btn-outline-primary" type="button" id="sendButton">Send</button>
+      </fieldset>
+    </form>
   </div>
 
 </div>
@@ -61,7 +63,7 @@
       // It's either a new user input or the first chunk of AI response for the latest input
       var messageDiv = document.createElement("div");
       messageDiv.className = "chat-message ai-response"; // Assign class for styling
-      messageDiv.textContent = message;
+      messageDiv.innerHTML = message.replaceAll('\n', '<br />');
       chatHistory.appendChild(messageDiv);
       lastUserMessageDiv = messageDiv; // Update the reference to the last message div
       isNewUserInput = false; // Reset the flag as the AI response starts

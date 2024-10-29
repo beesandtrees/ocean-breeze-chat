@@ -1,0 +1,38 @@
+.chat-history {
+  border: 1px solid var(--pico-primary-background);
+  border-radius: 4px;
+  height: 77vh;
+  padding: 16px;
+  text-align: left;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.chat-message {
+  border-radius: 5px;
+  margin-bottom: 8px;
+  max-width: 56%;
+  padding: 4px 8px;
+  width: fit-content;
+  word-wrap: break-word;
+}
+
+.chat-message.user-input {
+  align-self: flex-end;
+  background-color: #a983df; /* Light blue background */
+  color: white;
+  text-align: right;
+}
+
+.chat-message.ai-response {
+  background-color: #efe9f3; /* Light grey background */
+  text-align: left;
+}
+
+#footer {
+    padding: 0;
+    position: fixed;
+    bottom: 3vh;
+}
