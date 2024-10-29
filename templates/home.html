@@ -21,7 +21,7 @@
 
   <div class="container" id="footer">
     <form>
-      <fieldset role="group">
+      <fieldset class="submit-group" role="group">
         <input class="form-control" placeholder="Add input here" id="userInput">
         <button class="btn btn-outline-primary" type="button" id="sendButton">Send</button>
       </fieldset>
@@ -70,7 +70,18 @@
     }
   };
 
-  sendButton.onclick = function() {
+  sendButton.onclick = () => sendMessage()
+
+  // Add event listener for the Enter key
+  document.getElementById('userInput').addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+          sendMessage();
+          event.preventDefault(); // Prevent form submission if inside a form
+      }
+  });
+
+  var sendMessage = function() {
+    var pathname = window.location.pathname;
     var message = userInput.value.trim();
     if (message) {
       var userInputDiv = document.createElement("div");
@@ -80,7 +91,9 @@
 
       chatHistory.scrollTop = chatHistory.scrollHeight;
 
-      ws.send(message);
+      var user_message = pathname === '/mkm' ? '{"location": "mkm", "message": "' + message +'"}' : message;
+
+      ws.send(user_message);
       userInput.value = "";
       isNewUserInput = true; // Set the flag as it's a new user input
       lastUserMessageDiv = null; // Prepare for the next message

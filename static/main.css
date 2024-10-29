@@ -31,8 +31,18 @@
   text-align: left;
 }
 
+.submit-group {
+   max-width: 92vw;
+}
+
 #footer {
     padding: 0;
     position: fixed;
     bottom: 3vh;
+}
+
+@media (max-width: 900px) {
+    .chat-message {
+        max-width: 90%;
+    }
 }
