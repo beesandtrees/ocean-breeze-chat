@@ -42,6 +42,23 @@
 }
 
 @media (max-width: 900px) {
+    .navbar {
+        height: 6vh;
+    }
+
+    main {
+        height: 84vh;
+    }
+
+    .chat-history {
+        height: 100%;
+    }
+
+    #footer {
+        bottom: 0;
+        height: 9vh;
+    }
+
     .chat-message {
         max-width: 90%;
     }
