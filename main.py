@@ -19,12 +19,25 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
-
 chat_responses = []
 
 
+def get_path_based_on_env():
+    env = os.getenv("NODE_ENV")
+
+    if env == "dev":
+        return './'
+    elif env == "prod":
+        return "../../../../var/"
+    else:
+        return "../../../../var/"
+
+
+path = get_path_based_on_env()
+
+
 def write_chat_log_to_file(chat_set):
-    with open('../../../../var/chat_logs/data.json', 'r') as f:
+    with open(path + 'chat_logs/data.json', 'r') as f:
         data_list = json.load(f)
 
     print(data_list)
@@ -35,7 +48,7 @@ def write_chat_log_to_file(chat_set):
     else:
         data_list.append(chat_set)
 
-    with open('./chat_logs/data.json', 'w', encoding='utf-8') as f:
+    with open(path + 'chat_logs/data.json', 'w', encoding='utf-8') as f:
         json.dump(data_list, f, ensure_ascii=False, indent=4)
 
 
