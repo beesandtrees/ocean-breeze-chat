@@ -24,7 +24,7 @@ chat_responses = []
 
 
 def write_chat_log_to_file(chat_set):
-    with open('./chat_logs/data.json', 'r') as f:
+    with open('../../../../var/chat_logs/data.json', 'r') as f:
         data_list = json.load(f)
 
     print(data_list)
