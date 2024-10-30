@@ -99,5 +99,13 @@
     {
         "role": "user",
         "content": "3 line poem about the tide"
+    },
+    {
+        "role": "user",
+        "content": "test"
+    },
+    {
+        "role": "user",
+        "content": "testing color switch"
     }
 ]

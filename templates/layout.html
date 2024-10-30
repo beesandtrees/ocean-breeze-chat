@@ -9,7 +9,20 @@
         <link rel="manifest" href="/static/manifest.json" />
         <link rel="apple-touch-icon" href="/static/ios/192.png" />
         <title>mkm chatbot</title>
+        <script>
+            var pathname = window.location.pathname;
+            let root = document.documentElement;
+            root.style.setProperty('--pico-primary-focus', 'rgb(167 128 212 / 26%)');
 
+            if (pathname === '/') {
+                root.style.setProperty('--pico-primary', "#428eff");
+                root.style.setProperty('--pico-primary-background', "#457ce6");
+                root.style.setProperty('--pico-primary-hover', "#355eb3");
+                root.style.setProperty('--pico-primary-hover-background', "#355eb3");
+                root.style.setProperty('--pico-primary-underline', "rgb(82 120 197 / 50%)");
+                root.style.setProperty('--pico-primary-focus', 'rgb(172 210 243 / 50%)');
+            }
+        </script>
     </head>
     <body>
         {% include 'navbar.html' %}

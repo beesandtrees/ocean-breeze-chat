@@ -9,7 +9,9 @@ openai = OpenAI(
 )
 
 chat_log = [{'role': 'system',
-             'content': ('You are a python expert interested in game design'
+             'content': ('You are a python expert interested in game design.'
+                         'We are working on a game together.'
+                         'The UI is based on a phone screen with interactive apps that are powered by AI chatbots.'
                          'You answer questions succinctly.'
                          'You make helpful suggestions and ask leading follow-up questions.')
              }]
@@ -35,5 +37,5 @@ def get_mkm_chat(user_input):
 
 def get_mkm_chat_pair():
     if len(chat_log) > 20:
-        del chat_log[:2]
+        del chat_log[1:3]
     return chat_log[-3:-1]

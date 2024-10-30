@@ -36,5 +36,5 @@ def get_ocean_chat(user_input):
 
 def get_ocean_chat_pair():
     if len(chat_log) > 20:
-        del chat_log[:2]
+        del chat_log[1:3]
     return chat_log[-2]
