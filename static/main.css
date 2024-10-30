@@ -10,6 +10,12 @@
   overflow-y: auto;
 }
 
+#chatHistory {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
 .chat-message {
   border-radius: 5px;
   margin-bottom: 8px;
@@ -52,6 +58,7 @@
 
     .chat-history {
         height: 100%;
+        padding: 8px 8px;
     }
 
     #footer {
@@ -62,4 +69,64 @@
     .chat-message {
         max-width: 90%;
     }
+}
+
+/**
+ * ==============================================
+ * Dot Flashing
+ * ==============================================
+ */
+.dot-flashing {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: #9880ff;
+  color: #9880ff;
+  animation: dot-flashing 1s infinite linear alternate;
+  animation-delay: 0.5s;
+}
+.dot-flashing::before, .dot-flashing::after {
+  content: "";
+  display: inline-block;
+  position: absolute;
+  top: 0;
+}
+.dot-flashing::before {
+  left: -15px;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: #9880ff;
+  color: #9880ff;
+  animation: dot-flashing 1s infinite alternate;
+  animation-delay: 0s;
+}
+.dot-flashing::after {
+  left: 15px;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: #9880ff;
+  color: #9880ff;
+  animation: dot-flashing 1s infinite alternate;
+  animation-delay: 1s;
+}
+
+.chat-message.ai-loading {
+    align-items: center;
+    display: none;
+    height: 28px;
+    justify-content: center;
+    text-align: center;
+    width: 60px;
+}
+
+@keyframes dot-flashing {
+  0% {
+    background-color: #9880ff;
+  }
+  50%, 100% {
+    background-color: rgba(152, 128, 255, 0.2);
+  }
 }

@@ -2,20 +2,25 @@
 
 <div class="container mt-5">
   <main>
-      <div class="card-body chat-history" id="chatHistory">
+      <div class="card-body chat-history" id="chatBody">
         <div class="chat-message ai-response">
           Hi! How's it going?
         </div>
         <div class="chat-message ai-response">
           What can I help you with?
         </div>
+        <div id="chatHistory">
         <!-- auto populate here -->
         {% for response in chat_responses %}
-
-        <div class="{{ 'chat-message user-input' if loop.index0 is even else 'chat-message ai-response' }}">
-          {{ response }}
-        </div>
+          <div class="{{ 'chat-message user-input' if loop.index0 is even else 'chat-message ai-response' }}">
+            {{ response }}
+          </div>
         {% endfor %}
+        </div>
+
+        <div id="bot-loading" class="chat-message ai-response ai-loading">
+          <div class="dot-flashing"></div>
+        </div>
       </div>
   </main>
 
@@ -42,11 +47,18 @@
 
   var sendButton = document.getElementById("sendButton");
   var userInput = document.getElementById("userInput");
+  var chatBody = document.getElementById('chatBody');
   var chatHistory = document.getElementById("chatHistory");
   var lastUserMessageDiv = null; // Keep track of the last user message div
   var isNewUserInput = true; // Flag to track when a new user input happens
 
+  const setLoading = isLoading => {
+    var botLoading = document.getElementById('bot-loading');
+    botLoading.style.display = isLoading ? 'flex' : 'none';
+  }
+
   ws.onmessage = function(event) {
+    setLoading(false);
     var message = event.data.trim(); // Trim whitespace from the message
 
     // Check if it's a continuation of the AI's last message or a new one
@@ -65,6 +77,7 @@
       messageDiv.className = "chat-message ai-response"; // Assign class for styling
       messageDiv.innerHTML = message.replaceAll('\n', '<br />');
       chatHistory.appendChild(messageDiv);
+      chatBody.scrollTop = chatBody.scrollHeight;
       lastUserMessageDiv = messageDiv; // Update the reference to the last message div
       isNewUserInput = false; // Reset the flag as the AI response starts
     }
@@ -89,9 +102,11 @@
       userInputDiv.textContent = message;
       chatHistory.appendChild(userInputDiv);
 
-      chatHistory.scrollTop = chatHistory.scrollHeight;
+      chatBody.scrollTop = chatBody.scrollHeight;
 
       var user_message = pathname === '/mkm' ? '{"location": "mkm", "message": "' + message +'"}' : message;
+
+      setLoading(true);
 
       ws.send(user_message);
       userInput.value = "";
