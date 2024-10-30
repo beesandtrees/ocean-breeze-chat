@@ -104,7 +104,7 @@
 
       chatBody.scrollTop = chatBody.scrollHeight;
 
-      var user_message = pathname === '/mkm' ? '{"location": "mkm", "message": "' + message +'"}' : message;
+      var user_message = pathname === '/mkm' ? 'mkm: ' + message : message;
 
       setLoading(true);
 

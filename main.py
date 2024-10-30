@@ -18,14 +18,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
-def is_valid_json(string):
-    try:
-        json.loads(string)
-    except ValueError:
-        return False
-    return True
-
-
 def get_path_based_on_env():
     env = os.getenv("NODE_ENV")
 
@@ -74,9 +66,8 @@ async def chat(websocket: WebSocket):
         is_mkm = False
         datafile = 'data'
 
-        if is_valid_json(user_input):
-            user_json = json.loads(user_input)
-            user_message = user_json['message']
+        if "mkm:" in user_input:
+            user_message = user_input.replace('mkm: ', '')
             datafile = 'mkm-data'
             is_mkm = True
 
