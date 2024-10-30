@@ -8,8 +8,8 @@ import os
 from dotenv import load_dotenv
 import json
 
-from ocean_chat import get_ocean_chat
-from mkm_chat import get_mkm_chat
+from ocean_chat import get_ocean_chat, get_ocean_chat_pair
+from mkm_chat import get_mkm_chat, get_mkm_chat_pair
 
 load_dotenv()
 app = FastAPI()
@@ -83,16 +83,14 @@ async def chat(websocket: WebSocket):
         try:
             if is_mkm:
                 buffer = get_mkm_chat(user_message)
+                data_set = get_mkm_chat_pair()
             else:
                 buffer = get_ocean_chat(user_message)
+                data_set = get_ocean_chat_pair()
 
             await websocket.send_text(buffer)
 
-            data_set = {
-                'user': user_message,
-                'assistant': buffer
-            }
-            write_chat_log_to_file(data_set, datafile)
+            write_chat_log_to_file([data_set], datafile)
 
         except Exception as e:
             await websocket.send_text(f'Error: {str(e)}')

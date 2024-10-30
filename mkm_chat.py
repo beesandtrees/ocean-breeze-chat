@@ -31,3 +31,9 @@ def get_mkm_chat(user_input):
     chat_responses.append(bot_response)
 
     return bot_response
+
+
+def get_mkm_chat_pair():
+    if len(chat_log) > 20:
+        del chat_log[:2]
+    return chat_log[-3:-1]

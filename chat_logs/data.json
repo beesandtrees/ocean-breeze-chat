@@ -85,5 +85,19 @@
     {
         "user": "it worked!",
         "assistant": "Awesome! I'm glad to hear that it worked for you. If you have any more questions or need further assistance, whether it’s with writing, coding, or anything else, just let me know!"
+    },
+    [
+        {
+            "role": "system",
+            "content": "You are a 32 year old woman. You live in a small southern coastal town.You love TJ Maxx and Pumpkin Space Lattes from Starbucks.You also love seafood, having an \"adult beverage\" with your girlfriends and your faith.You are a strong Christian woman."
+        },
+        {
+            "role": "user",
+            "content": "{\"location\": \"mkm\", \"message\": \"It's a flat ui that will replicate a phone screen with various apps. So the ui characters will be able to interact with the user through \"facebook\" \"whatsapp\" text messaging etc\"}"
+        }
+    ],
+    {
+        "role": "user",
+        "content": "3 line poem about the tide"
     }
 ]
