@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 import json
 
-from ocean_chat import get_ocean_chat, get_ocean_chat_pair
+from ocean_chat import get_ocean_chat, get_ocean_chat_pair, get_poems_list
 from mkm_chat import get_mkm_chat, get_mkm_chat_pair
 
 load_dotenv()
@@ -54,6 +54,11 @@ async def chat_page(request: Request):
 @app.get("/mkm", response_class=HTMLResponse)
 async def mkm_chat_page(request: Request):
     return templates.TemplateResponse("home.html", {"request": request, "chat_responses": []})
+
+
+@app.get("/beach-poems", response_class=HTMLResponse)
+async def ocean_poems_list(request: Request):
+    return templates.TemplateResponse("poems-list.html", {"request": request, "poems_list": get_poems_list()})
 
 
 @app.websocket("/ws")

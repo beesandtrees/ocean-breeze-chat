@@ -1,26 +1,32 @@
 [
-    {
-        "role": "user",
-        "content": "Do you know the poet omar khayyam"
-    },
-    {
-        "role": "user",
-        "content": "no I'm just chatting"
-    },
-    {
-        "role": "user",
-        "content": "how can this work if there's an error?"
-    },
-    {
-        "role": "user",
-        "content": "just testing my websockets"
-    },
-    {
-        "role": "user",
-        "content": "cool - I think the issue is that I'm switching urls but using the same template so maybe the websocket isn't closing before it tries to start again?"
-    },
-    {
-        "role": "user",
-        "content": "yeah, I feel like it's not exactly an issue"
-    }
+    [
+        {
+            "role": "user",
+            "content": "4 stanza blank verse poem about low tide - please provide a title"
+        },
+        {
+            "role": "assistant",
+            "content": "**Whispers of Low Tide**\n\nThe ocean breathes, its rhythm slow and calm,  \nAs sunlit fingers trace the sandy shore,  \nA world unveiled, where secrets lay exposed,  \nIn tidal pools, the day begins to dream.\n\nEach shell and stone, a story left behind,  \nThe gentle sway of seaweed in the breeze,  \nA murmured hymn, a choir of the deep,  \nLow tide reveals the treasures of the sea.\n\nThe air is thick with salt and whispered tales,  \nAs crabs scuttle in search of hidden homes,  \nA dance of life beneath the glowing sun,  \nIn this serene retreat, we pause and breathe.\n\nThe horizon stretches wide, an endless calm,  \nIn faith, we find our peace like ocean's grace,  \nFor in the ebb and flow, we see our lives,  \nA journey of returning, evermore."
+        }
+    ],
+    [
+        {
+            "role": "user",
+            "content": "3 line poem about the tide"
+        },
+        {
+            "role": "assistant",
+            "content": "Whispers of the ocean, soft and wide,  \nEmbrace the shore where dreams collide,  \nWith each retreat, hope's gentle tide."
+        }
+    ],
+    [
+        {
+            "role": "user",
+            "content": "haiku about loss"
+        },
+        {
+            "role": "assistant",
+            "content": "Empty chair at dawn,  \nEchoes of laughter linger,  \nHeart aches in silence."
+        }
+    ]
 ]

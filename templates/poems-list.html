@@ -1,0 +1,18 @@
+{% include 'layout.html' %}
+
+<div class="container mt-5">
+  <main>
+      <div class="card-body poem-list">
+        <!-- auto populate here -->
+        {% for poem in poems_list %}
+          <div class="poem">
+            <p>
+            {% for line in poem %}
+              <span>{{line}}</span>
+            {% endfor %}
+            </p>
+          </div>
+        {% endfor %}
+      </div>
+  </main>
+</div>

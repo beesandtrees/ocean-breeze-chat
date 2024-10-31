@@ -69,6 +69,24 @@ nav details.dropdown summary:not([role]) {
     padding: 4px 8px;
 }
 
+.poem {
+    margin-bottom: 16px;
+}
+
+.poem span {
+    display: block;
+}
+
+.poem::after {
+    background-color: #333;
+    color: #333;
+    content: '';
+    display: block;
+    height: 1px;
+    margin: 36px 0;
+    width: 120px;
+}
+
 @media (max-width: 900px) {
 
     h1 {

@@ -1,8 +1,22 @@
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+import json
 
 load_dotenv()
+
+def get_path_based_on_env():
+    env = os.getenv("NODE_ENV")
+
+    if env == "dev":
+        return './'
+    elif env == "prod":
+        return "../../../../var/"
+    else:
+        return "../../../../var/"
+
+
+path = get_path_based_on_env()
 
 openai = OpenAI(
     api_key=os.getenv('OPENAI_API_SECRET_KEY')
@@ -37,4 +51,20 @@ def get_ocean_chat(user_input):
 def get_ocean_chat_pair():
     if len(chat_log) > 20:
         del chat_log[1:3]
-    return chat_log[-2]
+    print(chat_log[-2:])
+    return chat_log[-2:]
+
+
+def get_poems_list():
+    with open(path + 'chat_logs/data.json', 'r') as f:
+        data_list = json.load(f)
+
+    poems = []
+    for item in data_list:
+        poem = [d for d in item if d['role'] == 'assistant']
+        poem_content = poem[0]['content']
+        poems.append(poem_content.split('\n'))
+    return poems
+
+
+get_poems_list()
