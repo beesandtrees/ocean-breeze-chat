@@ -69,12 +69,23 @@ nav details.dropdown summary:not([role]) {
     padding: 4px 8px;
 }
 
+.poem-list {
+    margin-top: 32px;
+}
+
 .poem {
     margin-bottom: 16px;
 }
 
 .poem span {
     display: block;
+    min-height: 20px;
+}
+
+.poem span:first-of-type {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 8px;
 }
 
 .poem::after {
