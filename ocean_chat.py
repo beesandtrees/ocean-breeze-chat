@@ -5,6 +5,7 @@ import json
 
 load_dotenv()
 
+
 def get_path_based_on_env():
     env = os.getenv("NODE_ENV")
 
@@ -61,10 +62,7 @@ def get_poems_list():
 
     poems = []
     for item in data_list:
-        poem = [d for d in item if d['role'] == 'assistant']
+        poem = [p for p in item if p.get('role') == 'assistant']
         poem_content = poem[0]['content']
         poems.append(poem_content.split('\n'))
     return poems
-
-
-get_poems_list()
