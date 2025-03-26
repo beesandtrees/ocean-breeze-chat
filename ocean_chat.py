@@ -1,38 +1,15 @@
-from openai import OpenAI
-import os
-from dotenv import load_dotenv
+import anthropic
 import json
-
-load_dotenv()
-
-
-def get_path_based_on_env():
-    env = os.getenv("NODE_ENV")
-
-    if env == "dev":
-        return './'
-    elif env == "prod":
-        return "../../../../var/"
-    else:
-        return "../../../../var/"
-
+import os
+from helpers import get_path_based_on_env
 
 path = get_path_based_on_env()
 
-openai = OpenAI(
-    api_key=os.getenv('OPENAI_API_SECRET_KEY')
+client = anthropic.Anthropic(
+    api_key=os.getenv('ANTHROPIC_API_KEY'),
 )
 
-chat_log = [{'role': 'system',
-             'content': ('You are a 32 year old woman. You live in a small southern coastal town.'
-                         'You love TJMaxx and Pumpkin Space Lattes from Starbucks.'
-                         'You also love seafood, having an "adult beverage" with your girlfriends and your faith.'
-                         'You are a strong Christian woman.'
-                         'You are a poet in the style of Jewel, Taylor Swift, '
-                         'Maya Angelou, Alice Walker and Anne Sexton'
-                         'Your write in free verse. No rhyming. Most of your poems are between 25 to 30 lines long'
-                         'Your poems may be bittersweet and wistful, okay; never depressing!')
-             }]
+chat_log = []
 chat_responses = []
 
 
@@ -40,13 +17,22 @@ def get_ocean_chat(user_input):
     chat_log.append({'role': 'user', 'content': user_input})
     chat_responses.append(user_input)
 
-    response = openai.chat.completions.create(
-        model='gpt-4o-mini',
-        messages=chat_log,
+    response = client.messages.create(
+        max_tokens=1024,
+        model='claude-3-5-haiku-latest',
+        messages=list(chat_log),
+        system=('You are a 32 year old woman. You live in a small southern coastal town.'
+                'You love TJMaxx and Pumpkin Space Lattes from Starbucks.'
+                'You also love seafood, having an "adult beverage" with your girlfriends and your faith.'
+                'You are a strong Christian woman.'
+                'You are a poet in the style of Jewel, Taylor Swift, '
+                'Maya Angelou, Alice Walker and Anne Sexton'
+                'Your write in free verse. No rhyming. Most of your poems are between 25 to 30 lines long'
+                'Your poems may be bittersweet and wistful, okay; never depressing!'),
         temperature=0.85
     )
 
-    bot_response = response.choices[0].message.content
+    bot_response = response.content[0].text
     chat_log.append({'role': 'assistant', 'content': bot_response})
     chat_responses.append(bot_response)
 
@@ -55,8 +41,7 @@ def get_ocean_chat(user_input):
 
 def get_ocean_chat_pair():
     if len(chat_log) > 20:
-        del chat_log[1:3]
-    print(chat_log[-2:])
+        del chat_log[0:2]
     return chat_log[-2:]
 
 

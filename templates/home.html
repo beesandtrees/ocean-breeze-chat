@@ -104,7 +104,11 @@
 
       chatBody.scrollTop = chatBody.scrollHeight;
 
-      var user_message = pathname === '/mkm' ? 'mkm: ' + message : message;
+      var user_message = message;
+
+      if (pathname === '/mkm') user_message = 'mkm: ' + message;
+      if (pathname === '/vampire-heights') user_message = 'vampire: ' + message;
+      if (pathname === '/claude') user_message = 'claude: ' + message;
 
       setLoading(true);
 

@@ -1,4 +1,7 @@
 .env
 /env
+.venv
+/venv
 copypath.txt
 /chat_logs
+__pycache__
