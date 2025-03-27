@@ -2,13 +2,18 @@
 Redis Client Module
 
 Provides a Redis connection manager and utility functions for storing and retrieving chat data.
+Includes enhanced functionality for metadata extraction and semantic search.
 """
 
 import json
 import os
 import redis
+import time
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+from redis.commands.json.path import Path
+from redis.commands.search.field import TextField, TagField, NumericField
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 
 class RedisClient:
     """
@@ -44,6 +49,50 @@ class RedisClient:
         self.chat_log_prefix = "chat:log:"
         self.chat_responses_prefix = "chat:responses:"
         self.all_chat_logs_key = "chat:all_logs"
+        
+        # Enhanced memory features
+        self.recent_conversations_key = "recent_conversations"
+        self.long_term_conversations_key = "long_term_conversations"
+        self.chat_id_counter_key = "chat_id_counter"
+        
+        # Initialize chat ID counter if it doesn't exist
+        if not self.redis.exists(self.chat_id_counter_key):
+            self.redis.set(self.chat_id_counter_key, 0)
+            
+        # Initialize search capabilities if available
+        try:
+            self._setup_search_index()
+        except Exception as e:
+            print(f"Warning: Could not set up Redis search index: {e}")
+            print("Enhanced search features may not be available.")
+            
+    def _setup_search_index(self):
+        """Set up Redis search index for enhanced search capabilities"""
+        try:
+            # Check if the index exists by attempting to get its info
+            self.redis.ft("idx:chats").info()
+            print("Index 'idx:chats' already exists.")
+        except redis.exceptions.ResponseError:
+            # Define Redis schema for chat logs
+            schema = (
+                TextField("$.chat", as_name="chat"),
+                TextField("$.user_id", as_name="user_id"),
+                TextField("$.summary", as_name="summary"),
+                TextField("$.sentiment", as_name="sentiment"),
+                NumericField("$.word_count", as_name="word_count"),
+                TagField("$.topics[*]", as_name="topics"),
+                TagField("$.key_entities[*]", as_name="key_entities"),
+                NumericField("$.timestamp", as_name="timestamp")
+            )
+
+            # Create an index for the chat logs
+            self.redis.ft("idx:chats").create_index(
+                schema,
+                definition=IndexDefinition(
+                    prefix=["chat:"], index_type=IndexType.JSON
+                )
+            )
+            print("Index 'idx:chats' created successfully.")
     
     def ping(self) -> bool:
         """
@@ -58,13 +107,14 @@ class RedisClient:
             return False
     
     # Chat log operations
-    def save_chat_log(self, chat_type: str, chat_log: List[Dict[str, Any]]) -> bool:
+    def save_chat_log(self, chat_type: str, chat_log: List[Dict[str, Any]], use_enhanced_memory: bool = True) -> bool:
         """
         Save a chat log to Redis
         
         Args:
             chat_type (str): Type of chat (ocean, vampire, etc.)
             chat_log (List[Dict]): The chat log to save
+            use_enhanced_memory (bool): Whether to use enhanced memory features
             
         Returns:
             bool: True if successful, False otherwise
@@ -91,6 +141,25 @@ class RedisClient:
                 self.redis.lpush(self.all_chat_logs_key, json.dumps(chat_data))
                 # Trim the list to the last 100 chats to prevent unbounded growth
                 self.redis.ltrim(self.all_chat_logs_key, 0, 99)
+                
+                # Use enhanced memory features if enabled
+                if use_enhanced_memory:
+                    try:
+                        # Store with metadata for enhanced searching
+                        chat_id = self.store_conversation_with_metadata(
+                            chat_type=chat_type, 
+                            conversation=chat_log,
+                            user_id="system"  # Could be replaced with actual user ID
+                        )
+                        
+                        print(f"Enhanced memory: Stored conversation as {chat_id}")
+                        
+                        # For long conversations, move to long-term memory to keep recent memory fresh
+                        if len(chat_log) > 10:  # Move longer conversations to long-term memory
+                            self.move_to_long_term_memory(chat_id)
+                    except Exception as e:
+                        print(f"Warning: Enhanced memory features failed: {e}")
+                        print("Continuing with basic storage only.")
             
             return True
         except Exception as e:
@@ -221,6 +290,341 @@ class RedisClient:
         except Exception as e:
             print(f"Error retrieving poems: {e}")
             return []
+            
+    # Enhanced memory management functions
+    
+    def _extract_metadata(self, conversation: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Extract metadata from a conversation
+        
+        This is a simplified implementation. For a more sophisticated approach,
+        you would integrate with a language model like Mistral or Claude to extract
+        topics, sentiment, and other features.
+        
+        Args:
+            conversation (List[Dict]): The conversation to analyze
+            
+        Returns:
+            Dict: Metadata about the conversation
+        """
+        try:
+            # Create a joined representation of the conversation
+            messages = []
+            for entry in conversation:
+                role = entry.get("role", "unknown")
+                content = entry.get("content", "")
+                messages.append(f"{role}: {content}")
+                
+            full_text = " ".join(messages)
+            
+            # Simple word count
+            word_count = len(full_text.split())
+            
+            # Extract simple topics (just a placeholder - would be better with ML)
+            topics = []
+            topic_keywords = {
+                "ocean": ["ocean", "sea", "beach", "wave", "tide", "sand", "shell", "coral"],
+                "poetry": ["poem", "verse", "rhyme", "stanza", "imagery", "metaphor"],
+                "vampire": ["blood", "vampire", "night", "moon", "dark", "immortal"],
+                "game": ["game", "player", "level", "score", "play", "character"]
+            }
+            
+            # Check for topic keywords
+            for topic, keywords in topic_keywords.items():
+                full_text_lower = full_text.lower()
+                if any(keyword in full_text_lower for keyword in keywords):
+                    topics.append(topic)
+            
+            # Default metadata
+            metadata = {
+                "summary": full_text[:100] + "..." if len(full_text) > 100 else full_text,
+                "sentiment": "neutral",  # Default sentiment
+                "word_count": word_count,
+                "topics": topics,
+                "key_entities": [],
+                "timestamp": int(time.time())
+            }
+            
+            return metadata
+            
+        except Exception as e:
+            print(f"Error extracting metadata: {e}")
+            return {
+                "summary": "Error extracting metadata",
+                "sentiment": "neutral",
+                "word_count": 0,
+                "topics": [],
+                "key_entities": [],
+                "timestamp": int(time.time())
+            }
+
+    def store_conversation_with_metadata(self, chat_type: str, conversation: List[Dict[str, Any]], user_id: str = "anonymous") -> str:
+        """
+        Store a conversation with metadata for enhanced searching
+        
+        Args:
+            chat_type (str): Type of chat (ocean, vampire, etc.)
+            conversation (List[Dict]): The conversation to store
+            user_id (str): User identifier
+            
+        Returns:
+            str: The chat ID of the stored conversation
+        """
+        try:
+            # Generate a chat ID
+            chat_id = f"chat:{self.redis.incr(self.chat_id_counter_key)}"
+            
+            # Store the conversation as JSON
+            conversation_json = json.dumps(conversation)
+            self.redis.hset(chat_id, mapping={
+                "conversation": conversation_json,
+                "chat_type": chat_type,
+                "user_id": user_id
+            })
+            
+            # Add to recent conversations
+            self.redis.zadd(self.recent_conversations_key, {chat_id: int(time.time())})
+            
+            # Extract metadata
+            metadata = self._extract_metadata(conversation)
+            
+            # Store metadata with RedisJSON
+            chat_log = {
+                "chat": " ".join([f"{entry.get('role', 'unknown')}: {entry.get('content', '')}" for entry in conversation]),
+                "user_id": user_id,
+                "chat_type": chat_type,
+                "summary": metadata.get("summary", "No summary"),
+                "sentiment": metadata.get("sentiment", "neutral"),
+                "word_count": metadata.get("word_count", 0),
+                "topics": metadata.get("topics", []),
+                "key_entities": metadata.get("key_entities", []),
+                "timestamp": int(time.time())
+            }
+            
+            # Store the metadata using RedisJSON
+            try:
+                self.redis.json().set(chat_id, Path.root_path(), chat_log)
+                print(f"Stored enhanced metadata for chat {chat_id}")
+            except Exception as e:
+                print(f"Warning: Could not store metadata as JSON: {e}")
+                print("RedisJSON module may not be available.")
+                
+                # Fall back to regular hash storage for metadata
+                metadata_json = json.dumps(metadata)
+                self.redis.hset(chat_id, "metadata", metadata_json)
+                
+            return chat_id
+            
+        except Exception as e:
+            print(f"Error storing conversation with metadata: {e}")
+            return None
+    
+    def search_conversations_by_topic(self, topic: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search for conversations by topic
+        
+        Args:
+            topic (str): Topic to search for
+            limit (int): Maximum number of results to return
+            
+        Returns:
+            List[Dict]: List of conversations matching the topic
+        """
+        try:
+            # Try to use Redis Search if available
+            try:
+                query = f"@topics:{{{topic}}}"
+                search_results = self.redis.ft("idx:chats").search(query, limit=limit)
+                
+                results = []
+                for doc in search_results.docs:
+                    results.append({
+                        "chat_id": doc.id,
+                        "summary": doc.summary,
+                        "chat_type": doc.chat_type if hasattr(doc, "chat_type") else "unknown",
+                        "timestamp": doc.timestamp if hasattr(doc, "timestamp") else 0
+                    })
+                return results
+                
+            except Exception as e:
+                print(f"Warning: Redis Search failed: {e}")
+                print("Falling back to manual search.")
+                
+                # Fall back to manual search (less efficient)
+                results = []
+                
+                # Get recent conversations
+                chat_ids = self.redis.zrevrange(self.recent_conversations_key, 0, 50)
+                
+                for chat_id in chat_ids:
+                    # Try to get metadata
+                    try:
+                        metadata_json = self.redis.hget(chat_id, "metadata")
+                        if metadata_json:
+                            metadata = json.loads(metadata_json)
+                            topics = metadata.get("topics", [])
+                            
+                            if topic.lower() in [t.lower() for t in topics]:
+                                results.append({
+                                    "chat_id": chat_id,
+                                    "summary": metadata.get("summary", "No summary"),
+                                    "chat_type": self.redis.hget(chat_id, "chat_type") or "unknown",
+                                    "timestamp": metadata.get("timestamp", 0)
+                                })
+                                
+                                if len(results) >= limit:
+                                    break
+                    except Exception as e:
+                        print(f"Error processing chat {chat_id}: {e}")
+                        continue
+                        
+                return results
+                
+        except Exception as e:
+            print(f"Error searching conversations: {e}")
+            return []
+            
+    def get_related_conversations(self, user_input: str, limit: int = 3) -> List[Dict[str, Any]]:
+        """
+        Get conversations related to a user input
+        
+        Args:
+            user_input (str): User input to find related conversations for
+            limit (int): Maximum number of related conversations to return
+            
+        Returns:
+            List[Dict]: List of related conversations
+        """
+        try:
+            # Simple keyword extraction (could be replaced with NLP)
+            keywords = set()
+            for word in user_input.lower().split():
+                # Only consider words with 4+ characters as potential keywords
+                if len(word) >= 4 and word.isalpha():
+                    keywords.add(word)
+            
+            # Get related conversations for each keyword
+            all_results = []
+            for keyword in keywords:
+                results = self.search_conversations_by_topic(keyword, limit=2)
+                all_results.extend(results)
+            
+            # Deduplicate results
+            seen_ids = set()
+            unique_results = []
+            for result in all_results:
+                chat_id = result.get("chat_id")
+                if chat_id and chat_id not in seen_ids:
+                    seen_ids.add(chat_id)
+                    unique_results.append(result)
+            
+            # Return top N results
+            return unique_results[:limit]
+            
+        except Exception as e:
+            print(f"Error getting related conversations: {e}")
+            return []
+            
+    def move_to_long_term_memory(self, chat_id: str) -> bool:
+        """
+        Move a conversation from short-term to long-term memory
+        
+        Args:
+            chat_id (str): ID of the chat to move
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Remove from recent conversations
+            self.redis.zrem(self.recent_conversations_key, chat_id)
+            
+            # Add to long-term conversations
+            self.redis.zadd(self.long_term_conversations_key, {chat_id: int(time.time())})
+            
+            return True
+        except Exception as e:
+            print(f"Error moving conversation to long-term memory: {e}")
+            return False
+            
+    def cleanup_conversations(self, max_age_days: int = 30) -> int:
+        """
+        Clean up old conversations from long-term memory
+        
+        Args:
+            max_age_days (int): Maximum age of conversations to keep in days
+            
+        Returns:
+            int: Number of conversations removed
+        """
+        try:
+            # Calculate cutoff timestamp
+            cutoff_time = int(time.time()) - (max_age_days * 86400)
+            
+            # Remove old conversations from long-term memory
+            old_chats = self.redis.zrangebyscore(
+                self.long_term_conversations_key, 
+                0, 
+                cutoff_time
+            )
+            
+            count = 0
+            for chat_id in old_chats:
+                # Delete the chat data
+                self.redis.delete(chat_id)
+                # Remove from sorted set
+                self.redis.zrem(self.long_term_conversations_key, chat_id)
+                count += 1
+                
+            return count
+        except Exception as e:
+            print(f"Error cleaning up conversations: {e}")
+            return 0
+            
+    def get_conversation_by_id(self, chat_id: str) -> Dict[str, Any]:
+        """
+        Get a conversation by its ID
+        
+        Args:
+            chat_id (str): ID of the chat to retrieve
+            
+        Returns:
+            Dict: Chat data including conversation and metadata
+        """
+        try:
+            # Get conversation
+            conversation_json = self.redis.hget(chat_id, "conversation")
+            if not conversation_json:
+                return None
+                
+            conversation = json.loads(conversation_json)
+            
+            # Try to get metadata using RedisJSON
+            try:
+                chat_data = self.redis.json().get(chat_id)
+                metadata = {
+                    "summary": chat_data.get("summary", "No summary"),
+                    "sentiment": chat_data.get("sentiment", "neutral"),
+                    "word_count": chat_data.get("word_count", 0),
+                    "topics": chat_data.get("topics", []),
+                    "key_entities": chat_data.get("key_entities", []),
+                    "timestamp": chat_data.get("timestamp", 0)
+                }
+            except Exception:
+                # Fall back to hash storage
+                metadata_json = self.redis.hget(chat_id, "metadata")
+                metadata = json.loads(metadata_json) if metadata_json else {}
+                
+            return {
+                "chat_id": chat_id,
+                "conversation": conversation,
+                "chat_type": self.redis.hget(chat_id, "chat_type") or "unknown",
+                "user_id": self.redis.hget(chat_id, "user_id") or "anonymous",
+                "metadata": metadata
+            }
+        except Exception as e:
+            print(f"Error retrieving conversation: {e}")
+            return None
 
 # Create an instance for easy import
 redis_client = RedisClient()

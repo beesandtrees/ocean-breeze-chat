@@ -141,7 +141,7 @@ class ChatManager:
         """
         return self.clients.get(client_type)
     
-    def send_message(self, client_type, user_input, max_tokens=1024, temperature=0.75):
+    def send_message(self, client_type, user_input, max_tokens=1024, temperature=0.75, use_memory=True):
         """
         Send a message to a specific chat client
         
@@ -150,6 +150,7 @@ class ChatManager:
             user_input (str): User message
             max_tokens (int): Maximum tokens in response
             temperature (float): Temperature for generation
+            use_memory (bool): Whether to use conversational memory to enhance response
             
         Returns:
             str: Bot response
@@ -182,9 +183,37 @@ class ChatManager:
             
             return bot_response
         
-        # Normal handling for other clients
+        # Enhanced memory handling (for non-claude clients)
+        memory_context = ""
+        if use_memory and len(user_input.split()) > 3:  # Only use for non-trivial inputs
+            try:
+                # Get related conversations from memory
+                related_convos = redis_client.get_related_conversations(user_input, limit=2)
+                
+                if related_convos:
+                    # Format the related conversations as context
+                    memory_context = "\n\nRelated memories:\n"
+                    for i, convo in enumerate(related_convos, 1):
+                        summary = convo.get("summary", "")
+                        if summary:
+                            memory_context += f"{i}. {summary}\n"
+                            
+                    if len(memory_context.strip()) <= 5:  # If no real content was added
+                        memory_context = ""
+            except Exception as e:
+                print(f"Error retrieving conversational memory: {e}")
+                memory_context = ""
+        
+        # Normal handling with optional memory augmentation
+        augmented_input = user_input
+        if memory_context:
+            # Add memory context to the user input in a way that doesn't confuse the model
+            augmented_input = f"{user_input}\n\n[CONTEXT: Previous relevant interactions: {memory_context}]"
+            print(f"Enhanced input with memory context for {client_type}")
+        
+        # Send the augmented input
         bot_response = client.send_message(
-            user_input,
+            augmented_input,
             max_tokens=max_tokens,
             temperature=temperature
         )
@@ -193,6 +222,54 @@ class ChatManager:
         client.prune_history(max_length=20)
         
         return bot_response
+        
+    def send_message_with_memory(self, client_type, user_input, max_tokens=1024, temperature=0.75):
+        """
+        Send a message with explicit memory enhancement
+        
+        Args:
+            client_type (str): Type of client to send message to
+            user_input (str): User message
+            max_tokens (int): Maximum tokens in response
+            temperature (float): Temperature for generation
+            
+        Returns:
+            dict: Contains bot response and used memories
+        """
+        client = self.get_client(client_type)
+        if not client:
+            return {
+                "response": f"Error: Unknown chat client type '{client_type}'",
+                "memories_used": []
+            }
+        
+        # Get related conversations from memory
+        memories_used = []
+        try:
+            related_convos = redis_client.get_related_conversations(user_input, limit=2)
+            if related_convos:
+                for convo in related_convos:
+                    memories_used.append({
+                        "summary": convo.get("summary", "No summary available"),
+                        "chat_type": convo.get("chat_type", "unknown"),
+                        "timestamp": convo.get("timestamp", 0)
+                    })
+        except Exception as e:
+            print(f"Error retrieving conversational memory: {e}")
+        
+        # Call regular send_message with memory enabled
+        response = self.send_message(
+            client_type=client_type,
+            user_input=user_input,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            use_memory=True
+        )
+        
+        return {
+            "response": response,
+            "memories_used": memories_used
+        }
     
     def get_recent_messages(self, client_type, count=2):
         """
