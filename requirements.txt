@@ -7,3 +7,4 @@ python-multipart==0.0.9
 uvicorn==0.27.1
 websockets==12.0
 anthropic
+redis>=4.5.0
