@@ -9,12 +9,14 @@ import json
 import os
 import redis
 import time
+import anthropic
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from redis.commands.json.path import Path
 from redis.commands.search.field import TextField, TagField, NumericField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from dotenv import load_dotenv
+import metadata_utils
 
 # Ensure environment variables are loaded
 load_dotenv()
@@ -279,11 +281,7 @@ class RedisClient:
     
     def _extract_metadata(self, conversation: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Extract metadata from a conversation
-        
-        This is a simplified implementation. For a more sophisticated approach,
-        you would integrate with a language model like Mistral or Claude to extract
-        topics, sentiment, and other features.
+        Extract metadata from a conversation using Claude Haiku
         
         Args:
             conversation (List[Dict]): The conversation to analyze
@@ -292,6 +290,7 @@ class RedisClient:
             Dict: Metadata about the conversation
         """
         try:
+            # First create a fallback basic metadata
             # Create a joined representation of the conversation
             messages = []
             for entry in conversation:
@@ -300,26 +299,59 @@ class RedisClient:
                 messages.append(f"{role}: {content}")
                 
             full_text = " ".join(messages)
-            
-            # Simple word count
             word_count = len(full_text.split())
             
-            # Extract simple topics (just a placeholder - would be better with ML)
+            # Use Claude to extract rich metadata
+            try:
+                claude_metadata = metadata_utils.analyze_conversation(conversation)
+                
+                if claude_metadata and isinstance(claude_metadata, dict):
+                    # Convert Claude's metadata to our format
+                    metadata = {
+                        "summary": claude_metadata.get("summary", full_text[:100] + "..."),
+                        "sentiment": claude_metadata.get("sentiment", "neutral"),
+                        "word_count": word_count,
+                        "topics": claude_metadata.get("topics", []),
+                        "key_entities": claude_metadata.get("key_entities", []),
+                        "questions": claude_metadata.get("questions", []),
+                        "timestamp": int(time.time())
+                    }
+                    
+                    print("Successfully extracted metadata with Claude")
+                    return metadata
+                    
+            except Exception as e:
+                print(f"Error with Claude metadata extraction: {e}")
+                print("Falling back to basic metadata extraction")
+            
+            # Fallback to basic metadata extraction if Claude fails
+            # Extract simple topics as fallback
             topics = []
             topic_keywords = {
-                "ocean": ["ocean", "sea", "beach", "wave", "tide", "sand", "shell", "coral"],
+                "ocean": ["ocean", "sea", "beach", "wave", "tide", "sand", "shell", "coral", "dolphin", "fish", "marine"],
                 "poetry": ["poem", "verse", "rhyme", "stanza", "imagery", "metaphor"],
                 "vampire": ["blood", "vampire", "night", "moon", "dark", "immortal"],
                 "game": ["game", "player", "level", "score", "play", "character"]
             }
             
             # Check for topic keywords
+            full_text_lower = full_text.lower()
             for topic, keywords in topic_keywords.items():
-                full_text_lower = full_text.lower()
                 if any(keyword in full_text_lower for keyword in keywords):
                     topics.append(topic)
+                    
+            # Also add important content words as topics (for better retrieval)
+            important_words = set()
+            for word in full_text_lower.split():
+                word = word.strip(".,!?:;()\"'")
+                if len(word) >= 5 and word.isalpha() and word not in ["about", "would", "could", "their", "there", "where", "which", "these", "those", "assistant", "response"]:
+                    important_words.add(word)
             
-            # Default metadata
+            # Add important words to topics (limited to avoid too many)
+            for word in list(important_words)[:10]:  # Limit to top 10 words
+                topics.append(word)
+            
+            # Default fallback metadata
             metadata = {
                 "summary": full_text[:100] + "..." if len(full_text) > 100 else full_text,
                 "sentiment": "neutral",  # Default sentiment
@@ -408,38 +440,80 @@ class RedisClient:
             List[Dict]: List of conversations matching the topic
         """
         try:
-            # Skip Redis Search attempt and go directly to manual search
-            print("Using manual search for topic:", topic)
+            print("Using enhanced manual search for topic:", topic)
             
             # Manual search implementation
             results = []
             
-            # Get recent conversations
-            chat_ids = self.redis.zrevrange(self.recent_conversations_key, 0, 50)
+            # Get recent conversations and long-term memory conversations
+            recent_chat_ids = self.redis.zrevrange(self.recent_conversations_key, 0, 50)
+            longterm_chat_ids = self.redis.zrevrange(self.long_term_conversations_key, 0, 50)
             
-            for chat_id in chat_ids:
+            # Combine and deduplicate IDs
+            all_chat_ids = list(set(recent_chat_ids + longterm_chat_ids))
+            
+            topic = topic.lower()
+            for chat_id in all_chat_ids:
                 # Try to get metadata
                 try:
                     metadata_json = self.redis.hget(chat_id, "metadata")
                     if metadata_json:
                         metadata = json.loads(metadata_json)
-                        topics = metadata.get("topics", [])
+                        # Check topics
+                        topics = [t.lower() for t in metadata.get("topics", [])]
+                        key_entities = [e.lower() for e in metadata.get("key_entities", [])]
+                        summary = metadata.get("summary", "").lower()
                         
-                        if topic.lower() in [t.lower() for t in topics]:
+                        # More sophisticated matching:
+                        match_found = False
+                        score = 0  # Higher score = better match
+                        
+                        # 1. Exact topic match
+                        if topic in topics:
+                            match_found = True
+                            score += 10
+                        
+                        # 2. Entity match
+                        if topic in key_entities:
+                            match_found = True
+                            score += 8
+                        
+                        # 3. Partial match in topics (for multi-word topics)
+                        if not match_found:
+                            for t in topics:
+                                if topic in t or t in topic:
+                                    match_found = True
+                                    score += 6
+                                    break
+                        
+                        # 4. Partial match in key entities
+                        if not match_found:
+                            for e in key_entities:
+                                if topic in e or e in topic:
+                                    match_found = True
+                                    score += 5
+                                    break
+                        
+                        # 5. Summary match (lowest priority)
+                        if not match_found and topic in summary:
+                            match_found = True
+                            score += 3
+                        
+                        if match_found:
                             results.append({
                                 "chat_id": chat_id,
                                 "summary": metadata.get("summary", "No summary"),
                                 "chat_type": self.redis.hget(chat_id, "chat_type") or "unknown",
-                                "timestamp": metadata.get("timestamp", 0)
+                                "timestamp": metadata.get("timestamp", 0),
+                                "score": score  # Include the score for sorting
                             })
-                            
-                            if len(results) >= limit:
-                                break
                 except Exception as e:
                     print(f"Error processing chat {chat_id}: {e}")
                     continue
-                    
-            return results
+            
+            # Sort by score (highest first) and return limited results
+            results.sort(key=lambda x: x.get("score", 0), reverse=True)
+            return results[:limit]
             
         except Exception as e:
             print(f"Error searching conversations: {e}")
@@ -457,27 +531,73 @@ class RedisClient:
             List[Dict]: List of related conversations
         """
         try:
-            # Simple keyword extraction (could be replaced with NLP)
-            keywords = set()
-            for word in user_input.lower().split():
-                # Only consider words with 4+ characters as potential keywords
-                if len(word) >= 4 and word.isalpha():
-                    keywords.add(word)
+            # Ask Claude to help extract keywords for better retrieval
+            try:
+                # Extract keywords using metadata_utils
+                api_key = os.getenv('ANTHROPIC_API_KEY')
+                if api_key:
+                    client = anthropic.Anthropic(api_key=api_key)
+                    prompt = f"""
+                    From this user query, extract 2-4 key search terms that would help find related information.
+                    Return only the keywords as a JSON list, nothing else.
+                    
+                    User query: "{user_input}"
+                    """
+                    
+                    response = client.messages.create(
+                        model="claude-3-haiku-20240307",
+                        max_tokens=50,
+                        temperature=0.1,
+                        messages=[{"role": "user", "content": prompt}],
+                    )
+                    
+                    response_text = response.content[0].text
+                    # Extract JSON array from response
+                    claude_keywords = metadata_utils.extract_json_from_response(response_text)
+                    
+                    if isinstance(claude_keywords, list) and len(claude_keywords) > 0:
+                        # Use Claude-extracted keywords
+                        keywords = set(claude_keywords)
+                        print(f"Using Claude-extracted keywords: {keywords}")
+                    else:
+                        # Fallback to simple extraction
+                        raise ValueError("Claude didn't return valid keywords")
+                else:
+                    raise ValueError("No API key available")
+                    
+            except Exception as e:
+                print(f"Error extracting keywords with Claude: {e}")
+                print("Falling back to simple keyword extraction")
+                
+                # Simple keyword extraction (fallback)
+                keywords = set()
+                for word in user_input.lower().split():
+                    # Only consider words with 4+ characters as potential keywords
+                    if len(word) >= 4 and word.isalpha() and word not in ["about", "what", "tell", "when", "where", "which", "there", "their", "would", "could", "should"]:
+                        keywords.add(word)
             
             # Get related conversations for each keyword
             all_results = []
             for keyword in keywords:
-                results = self.search_conversations_by_topic(keyword, limit=2)
+                results = self.search_conversations_by_topic(keyword, limit=3)
                 all_results.extend(results)
             
-            # Deduplicate results
-            seen_ids = set()
-            unique_results = []
+            # Score results based on how many keywords they match
+            scored_results = {}
             for result in all_results:
                 chat_id = result.get("chat_id")
-                if chat_id and chat_id not in seen_ids:
-                    seen_ids.add(chat_id)
-                    unique_results.append(result)
+                if not chat_id:
+                    continue
+                    
+                # If we already have this chat_id, update its score
+                if chat_id in scored_results:
+                    scored_results[chat_id]["score"] += result.get("score", 1)
+                else:
+                    scored_results[chat_id] = result
+            
+            # Convert back to list and sort by score
+            unique_results = list(scored_results.values())
+            unique_results.sort(key=lambda x: x.get("score", 0), reverse=True)
             
             # Return top N results
             return unique_results[:limit]

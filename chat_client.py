@@ -3,13 +3,17 @@ import anthropic
 from datetime import datetime
 from redis_client import redis_client
 from dotenv import load_dotenv
+import re
+
+# Import the bedrock client to handle Amazon Bedrock requests
+from bedrock_client import BedrockClient
 
 # Ensure environment variables are loaded
 load_dotenv()
 
 class ChatClient:
     """
-    Base class for handling chat interactions with Anthropic's Claude API.
+    Base class for handling chat interactions with Anthropic's Claude API or Amazon Bedrock.
     Manages message history, API requests, and common utility functions.
     Uses Redis for persistent storage.
     """
@@ -19,22 +23,33 @@ class ChatClient:
         Initialize a new ChatClient
         
         Args:
-            model (str): The Claude model to use
+            model (str): The model to use (Anthropic model name or Bedrock model ID)
             system_prompt (str): The system prompt that defines the assistant's behavior
             chat_type (str): The type of chat (ocean, vampire, etc.) for Redis storage
         """
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable not set. Please check your .env file.")
-            
-        self.client = anthropic.Anthropic(
-            api_key=api_key,
-        )
         self.chat_log = []
         self.chat_responses = []
         self.model = model
         self.system_prompt = system_prompt
         self.chat_type = chat_type
+        
+        # Determine if this is a Bedrock model or Anthropic model
+        if re.match(r'anthropic\.claude-.*', model) or model.startswith("bedrock"):
+            # This is a Bedrock model
+            self.is_bedrock = True
+            self.client = BedrockClient(region_name=os.getenv('AWS_REGION', 'us-east-1'))
+            print(f"Initialized Bedrock client for model: {model}")
+        else:
+            # This is a regular Anthropic API model
+            self.is_bedrock = False
+            api_key = os.getenv('ANTHROPIC_API_KEY')
+            if not api_key:
+                raise ValueError("ANTHROPIC_API_KEY environment variable not set. Please check your .env file.")
+                
+            self.client = anthropic.Anthropic(
+                api_key=api_key,
+            )
+            print(f"Initialized Anthropic client for model: {model}")
         
         # Load history from Redis if chat_type is specified
         if chat_type:

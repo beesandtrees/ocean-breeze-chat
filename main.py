@@ -12,6 +12,7 @@ from ocean_chat import get_ocean_chat, get_ocean_chat_pair, get_poems_list
 from mkm_chat import get_mkm_chat, get_mkm_chat_pair
 from wuthering_vampires_chat import get_vampire_chat, get_vampire_chat_pair
 from claude_chat import get_claude_chat, get_claude_chat_pair
+from bedrock_chat import get_bedrock_chat, get_bedrock_chat_pair
 
 load_dotenv()
 app = FastAPI()
@@ -72,6 +73,10 @@ async def ocean_poems_list(request: Request):
 async def claude_chat(request: Request):
     return templates.TemplateResponse("home.html", {"request": request, "chat_responses": []})
 
+@app.get("/bedrock", response_class=HTMLResponse)
+async def bedrock_chat_page(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request, "chat_responses": []})
+
 
 @app.websocket("/ws")
 async def chat(websocket: WebSocket):
@@ -83,6 +88,7 @@ async def chat(websocket: WebSocket):
         is_claude = False
         is_mkm = False
         is_vampire = False
+        is_bedrock = False
         datafile = 'data'
 
         if "mkm:" in user_input:
@@ -95,10 +101,15 @@ async def chat(websocket: WebSocket):
             datafile = 'vampire-heights'
             is_vampire = True
 
-        if "claude" in user_input:
+        if "claude:" in user_input:
             user_message = user_input.replace('claude: ', '')
             datafile = 'claude'
             is_claude = True
+            
+        if "bedrock:" in user_input:
+            user_message = user_input.replace('bedrock: ', '')
+            datafile = 'bedrock'
+            is_bedrock = True
 
         try:
             if is_mkm:
@@ -110,6 +121,9 @@ async def chat(websocket: WebSocket):
             elif is_claude:
                 buffer = get_claude_chat(user_message)
                 data_set = get_claude_chat_pair()
+            elif is_bedrock:
+                buffer = get_bedrock_chat(user_message)
+                data_set = get_bedrock_chat_pair()
             else:
                 buffer = get_ocean_chat(user_message)
                 data_set = get_ocean_chat_pair()

@@ -6,7 +6,7 @@ from typing import Annotated
 import os
 from dotenv import load_dotenv
 
-from claude_chat import get_claude_bedrock
+from bedrock_chat import get_claude_bedrock
 from redis_utils import get_top_10_conversations
 
 load_dotenv()

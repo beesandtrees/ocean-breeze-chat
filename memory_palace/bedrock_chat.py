@@ -57,12 +57,6 @@ def get_claude_bedrock(user_input):
     return response_text
 
 
-# def get_claude_chat_pair():
-#     if len(chat_log) > 20:
-#         del chat_log[0:2]
-#     return chat_log[-2:]
-
-
 def get_claude_list():
     with open('./chat_logs/claude.json', 'r') as f:
         data_list = json.load(f)
