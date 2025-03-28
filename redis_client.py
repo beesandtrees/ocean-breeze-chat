@@ -14,6 +14,10 @@ from typing import List, Dict, Any, Optional
 from redis.commands.json.path import Path
 from redis.commands.search.field import TextField, TagField, NumericField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from dotenv import load_dotenv
+
+# Ensure environment variables are loaded
+load_dotenv()
 
 class RedisClient:
     """
@@ -35,6 +39,8 @@ class RedisClient:
         redis_port = int(os.getenv('REDIS_PORT', 6379))
         redis_db = int(os.getenv('REDIS_DB', 0))
         redis_password = os.getenv('REDIS_PASSWORD', None)
+        
+        print(f"Initializing Redis connection to {redis_host}:{redis_port}")
         
         # Create Redis connection
         self.redis = redis.Redis(
@@ -68,31 +74,9 @@ class RedisClient:
             
     def _setup_search_index(self):
         """Set up Redis search index for enhanced search capabilities"""
-        try:
-            # Check if the index exists by attempting to get its info
-            self.redis.ft("idx:chats").info()
-            print("Index 'idx:chats' already exists.")
-        except redis.exceptions.ResponseError:
-            # Define Redis schema for chat logs
-            schema = (
-                TextField("$.chat", as_name="chat"),
-                TextField("$.user_id", as_name="user_id"),
-                TextField("$.summary", as_name="summary"),
-                TextField("$.sentiment", as_name="sentiment"),
-                NumericField("$.word_count", as_name="word_count"),
-                TagField("$.topics[*]", as_name="topics"),
-                TagField("$.key_entities[*]", as_name="key_entities"),
-                NumericField("$.timestamp", as_name="timestamp")
-            )
-
-            # Create an index for the chat logs
-            self.redis.ft("idx:chats").create_index(
-                schema,
-                definition=IndexDefinition(
-                    prefix=["chat:"], index_type=IndexType.JSON
-                )
-            )
-            print("Index 'idx:chats' created successfully.")
+        print("Skipping Redis search index setup - RedisSearch module not available")
+        # Simply return without attempting to set up the search index
+        return
     
     def ping(self) -> bool:
         """
@@ -401,17 +385,10 @@ class RedisClient:
                 "timestamp": int(time.time())
             }
             
-            # Store the metadata using RedisJSON
-            try:
-                self.redis.json().set(chat_id, Path.root_path(), chat_log)
-                print(f"Stored enhanced metadata for chat {chat_id}")
-            except Exception as e:
-                print(f"Warning: Could not store metadata as JSON: {e}")
-                print("RedisJSON module may not be available.")
-                
-                # Fall back to regular hash storage for metadata
-                metadata_json = json.dumps(metadata)
-                self.redis.hset(chat_id, "metadata", metadata_json)
+            # Skip RedisJSON and use regular hash storage for metadata
+            metadata_json = json.dumps(metadata)
+            self.redis.hset(chat_id, "metadata", metadata_json)
+            print(f"Stored enhanced metadata for chat {chat_id} using hash storage")
                 
             return chat_id
             
@@ -431,59 +408,43 @@ class RedisClient:
             List[Dict]: List of conversations matching the topic
         """
         try:
-            # Try to use Redis Search if available
-            try:
-                query = f"@topics:{{{topic}}}"
-                search_results = self.redis.ft("idx:chats").search(query, limit=limit)
-                
-                results = []
-                for doc in search_results.docs:
-                    results.append({
-                        "chat_id": doc.id,
-                        "summary": doc.summary,
-                        "chat_type": doc.chat_type if hasattr(doc, "chat_type") else "unknown",
-                        "timestamp": doc.timestamp if hasattr(doc, "timestamp") else 0
-                    })
-                return results
-                
-            except Exception as e:
-                print(f"Warning: Redis Search failed: {e}")
-                print("Falling back to manual search.")
-                
-                # Fall back to manual search (less efficient)
-                results = []
-                
-                # Get recent conversations
-                chat_ids = self.redis.zrevrange(self.recent_conversations_key, 0, 50)
-                
-                for chat_id in chat_ids:
-                    # Try to get metadata
-                    try:
-                        metadata_json = self.redis.hget(chat_id, "metadata")
-                        if metadata_json:
-                            metadata = json.loads(metadata_json)
-                            topics = metadata.get("topics", [])
-                            
-                            if topic.lower() in [t.lower() for t in topics]:
-                                results.append({
-                                    "chat_id": chat_id,
-                                    "summary": metadata.get("summary", "No summary"),
-                                    "chat_type": self.redis.hget(chat_id, "chat_type") or "unknown",
-                                    "timestamp": metadata.get("timestamp", 0)
-                                })
-                                
-                                if len(results) >= limit:
-                                    break
-                    except Exception as e:
-                        print(f"Error processing chat {chat_id}: {e}")
-                        continue
+            # Skip Redis Search attempt and go directly to manual search
+            print("Using manual search for topic:", topic)
+            
+            # Manual search implementation
+            results = []
+            
+            # Get recent conversations
+            chat_ids = self.redis.zrevrange(self.recent_conversations_key, 0, 50)
+            
+            for chat_id in chat_ids:
+                # Try to get metadata
+                try:
+                    metadata_json = self.redis.hget(chat_id, "metadata")
+                    if metadata_json:
+                        metadata = json.loads(metadata_json)
+                        topics = metadata.get("topics", [])
                         
-                return results
-                
+                        if topic.lower() in [t.lower() for t in topics]:
+                            results.append({
+                                "chat_id": chat_id,
+                                "summary": metadata.get("summary", "No summary"),
+                                "chat_type": self.redis.hget(chat_id, "chat_type") or "unknown",
+                                "timestamp": metadata.get("timestamp", 0)
+                            })
+                            
+                            if len(results) >= limit:
+                                break
+                except Exception as e:
+                    print(f"Error processing chat {chat_id}: {e}")
+                    continue
+                    
+            return results
+            
         except Exception as e:
             print(f"Error searching conversations: {e}")
             return []
-            
+
     def get_related_conversations(self, user_input: str, limit: int = 3) -> List[Dict[str, Any]]:
         """
         Get conversations related to a user input
@@ -599,21 +560,9 @@ class RedisClient:
                 
             conversation = json.loads(conversation_json)
             
-            # Try to get metadata using RedisJSON
-            try:
-                chat_data = self.redis.json().get(chat_id)
-                metadata = {
-                    "summary": chat_data.get("summary", "No summary"),
-                    "sentiment": chat_data.get("sentiment", "neutral"),
-                    "word_count": chat_data.get("word_count", 0),
-                    "topics": chat_data.get("topics", []),
-                    "key_entities": chat_data.get("key_entities", []),
-                    "timestamp": chat_data.get("timestamp", 0)
-                }
-            except Exception:
-                # Fall back to hash storage
-                metadata_json = self.redis.hget(chat_id, "metadata")
-                metadata = json.loads(metadata_json) if metadata_json else {}
+            # Get metadata from hash storage
+            metadata_json = self.redis.hget(chat_id, "metadata")
+            metadata = json.loads(metadata_json) if metadata_json else {}
                 
             return {
                 "chat_id": chat_id,

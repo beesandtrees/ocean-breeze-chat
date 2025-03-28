@@ -2,6 +2,10 @@ import os
 import anthropic
 from datetime import datetime
 from redis_client import redis_client
+from dotenv import load_dotenv
+
+# Ensure environment variables are loaded
+load_dotenv()
 
 class ChatClient:
     """
@@ -19,8 +23,12 @@ class ChatClient:
             system_prompt (str): The system prompt that defines the assistant's behavior
             chat_type (str): The type of chat (ocean, vampire, etc.) for Redis storage
         """
+        api_key = os.getenv('ANTHROPIC_API_KEY')
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable not set. Please check your .env file.")
+            
         self.client = anthropic.Anthropic(
-            api_key=os.getenv('ANTHROPIC_API_KEY'),
+            api_key=api_key,
         )
         self.chat_log = []
         self.chat_responses = []

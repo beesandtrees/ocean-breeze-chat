@@ -150,12 +150,9 @@ if __name__ == "__main__":
     if redis_client.ping():
         print("✅ Connected to Redis server")
 
-        # Confirm before proceeding
-        confirm = input("This will migrate chat data from JSON files to Redis. Proceed? (y/n): ")
-        if confirm.lower() != 'y':
-            print("Migration cancelled.")
-            exit(0)
-
+        # Auto-proceed with migration
+        print("Proceeding with migration automatically...")
+        
         # Run migration
         success = migrate_chat_history()
 
