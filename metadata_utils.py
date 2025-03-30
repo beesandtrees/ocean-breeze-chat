@@ -1,13 +1,13 @@
 """
 Enhanced Metadata Utils
 
-Uses Claude Haiku to extract metadata from conversations for better retrieval.
+Uses Mistral from AWS Bedrock to extract metadata from conversations for better retrieval.
 """
 
 import json
 import re
 import time
-import anthropic
+import boto3
 import os
 from dotenv import load_dotenv
 
@@ -16,7 +16,7 @@ load_dotenv()
 
 def extract_json_from_response(response_text):
     """
-    Extract JSON from Claude's response
+    Extract JSON from Mistral's response
     """
     # Remove code block markers and extra whitespace
     response_text = response_text.replace('```json', '').replace('```', '').strip()
@@ -37,13 +37,15 @@ def extract_json_from_response(response_text):
 
     return {}
 
-def generate_metadata_with_claude(text):
+def generate_metadata_with_mistral(text):
     """
-    Generate rich metadata from conversation text using Claude Haiku
+    Generate rich metadata from conversation text using Mistral from AWS Bedrock
     """
     try:
-        client = anthropic.Anthropic(
-            api_key=os.getenv('ANTHROPIC_API_KEY'),
+        # Initialize Bedrock client
+        bedrock = boto3.client(
+            service_name='bedrock-runtime',
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
         )
 
         prompt = f"""
@@ -68,14 +70,25 @@ def generate_metadata_with_claude(text):
         }}
         """
 
-        response = client.messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=300,
-            temperature=0.2,
-            messages=[{"role": "user", "content": prompt}],
+        # Prepare the request body for Bedrock
+        request_body = {
+            "prompt": prompt,
+            "max_tokens": 300,
+            "temperature": 0.2,
+            "top_p": 0.95,
+            "stop": ["</s>"]
+        }
+
+        # Call Bedrock API
+        response = bedrock.invoke_model(
+            modelId='mistral.mistral-small-2402-v1:0',
+            body=json.dumps(request_body)
         )
 
-        response_text = response.content[0].text
+        # Parse the response
+        response_body = json.loads(response.get('body').read())
+        response_text = response_body.get('completion', '')
+
         return extract_json_from_response(response_text)
 
     except Exception as e:
@@ -106,7 +119,7 @@ def analyze_conversation(conversation, analysis_type='full'):
             f"Assistant: {msg['content']}" for msg in conversation if msg['role'] == 'assistant'
         ])
 
-    metadata = generate_metadata_with_claude(conversation_text)
+    metadata = generate_metadata_with_mistral(conversation_text)
     
     # Add timestamp 
     if metadata:

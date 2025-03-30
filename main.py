@@ -80,61 +80,75 @@ async def bedrock_chat_page(request: Request):
 
 @app.websocket("/ws")
 async def chat(websocket: WebSocket):
-    await websocket.accept()
+    try:
+        await websocket.accept()
 
-    while True:
-        user_input = await websocket.receive_text()
-        user_message = user_input
-        is_claude = False
-        is_mkm = False
-        is_vampire = False
-        is_bedrock = False
-        datafile = 'data'
+        while True:
+            try:
+                user_input = await websocket.receive_text()
+                user_message = user_input
+                is_claude = False
+                is_mkm = False
+                is_vampire = False
+                is_bedrock = False
+                datafile = 'data'
 
-        if "mkm:" in user_input:
-            user_message = user_input.replace('mkm: ', '')
-            datafile = 'mkm-data'
-            is_mkm = True
+                if "mkm:" in user_input:
+                    user_message = user_input.replace('mkm: ', '')
+                    datafile = 'mkm-data'
+                    is_mkm = True
 
-        if "vampire:" in user_input:
-            user_message = user_input.replace('vampire: ', '')
-            datafile = 'vampire-heights'
-            is_vampire = True
+                if "vampire:" in user_input:
+                    user_message = user_input.replace('vampire: ', '')
+                    datafile = 'vampire-heights'
+                    is_vampire = True
 
-        if "claude:" in user_input:
-            user_message = user_input.replace('claude: ', '')
-            datafile = 'claude'
-            is_claude = True
-            
-        if "bedrock:" in user_input:
-            user_message = user_input.replace('bedrock: ', '')
-            datafile = 'bedrock'
-            is_bedrock = True
+                if "claude:" in user_input:
+                    user_message = user_input.replace('claude: ', '')
+                    datafile = 'claude'
+                    is_claude = True
+                    
+                if "bedrock:" in user_input:
+                    user_message = user_input.replace('bedrock: ', '')
+                    datafile = 'bedrock'
+                    is_bedrock = True
 
+                try:
+                    if is_mkm:
+                        buffer = get_mkm_chat(user_message)
+                        data_set = get_mkm_chat_pair()
+                    elif is_vampire:
+                        buffer = get_vampire_chat(user_message)
+                        data_set = get_vampire_chat_pair()
+                    elif is_claude:
+                        buffer = get_claude_chat(user_message)
+                        data_set = get_claude_chat_pair()
+                    elif is_bedrock:
+                        buffer = get_bedrock_chat(user_message)
+                        data_set = get_bedrock_chat_pair()
+                    else:
+                        buffer = get_ocean_chat(user_message)
+                        data_set = get_ocean_chat_pair()
+
+                    await websocket.send_text(buffer)
+                    write_chat_log_to_file([data_set], datafile)
+
+                except Exception as e:
+                    print(f"Error processing message: {str(e)}")
+                    await websocket.send_text(f'Error: {str(e)}')
+                    continue
+
+            except Exception as e:
+                print(f"Error receiving message: {str(e)}")
+                break
+
+    except Exception as e:
+        print(f"WebSocket connection error: {str(e)}")
+    finally:
         try:
-            if is_mkm:
-                buffer = get_mkm_chat(user_message)
-                data_set = get_mkm_chat_pair()
-            elif is_vampire:
-                buffer = get_vampire_chat(user_message)
-                data_set = get_vampire_chat_pair()
-            elif is_claude:
-                buffer = get_claude_chat(user_message)
-                data_set = get_claude_chat_pair()
-            elif is_bedrock:
-                buffer = get_bedrock_chat(user_message)
-                data_set = get_bedrock_chat_pair()
-            else:
-                buffer = get_ocean_chat(user_message)
-                data_set = get_ocean_chat_pair()
-
-            await websocket.send_text(buffer)
-
-            write_chat_log_to_file([data_set], datafile)
-
-        except Exception as e:
-            await websocket.send_text(f'Error: {str(e)}')
-            break
+            await websocket.close()
+        except:
+            pass
 
 
 @app.post("/", response_class=HTMLResponse)

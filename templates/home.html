@@ -13,7 +13,7 @@
         <!-- auto populate here -->
         {% for response in chat_responses %}
           <div class="{{ 'chat-message user-input' if loop.index0 is even else 'chat-message ai-response' }}">
-            {{ response }}
+            {{ response | safe }}
           </div>
         {% endfor %}
         </div>
@@ -35,6 +35,88 @@
 
 </div>
 
+<style>
+  .chat-message {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    max-width: 85%;
+  }
+
+  .user-input {
+    background-color: #e3f2fd;
+    margin-left: auto;
+  }
+
+  .ai-response {
+    background-color: #f5f5f5;
+    margin-right: auto;
+  }
+
+  .ai-loading {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    min-height: 2rem;
+  }
+
+  /* Code block styling */
+  pre {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  code {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+  }
+
+  /* Inline code */
+  .ai-response code:not(pre code) {
+    background-color: #e9ecef;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+  }
+
+  /* List styling */
+  .ai-response ul, .ai-response ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .ai-response li {
+    margin: 0.25rem 0;
+  }
+
+  /* Blockquote styling */
+  .ai-response blockquote {
+    border-left: 4px solid #dee2e6;
+    margin: 0.5rem 0;
+    padding-left: 1rem;
+    color: #6c757d;
+  }
+
+  /* Table styling */
+  .ai-response table {
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+    width: 100%;
+  }
+
+  .ai-response th, .ai-response td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+  }
+
+  .ai-response th {
+    background-color: #f8f9fa;
+  }
+</style>
+
 <script>
   var websocketString = '';
   if (window.location.hostname === '127.0.0.1') {
@@ -49,19 +131,51 @@
   var userInput = document.getElementById("userInput");
   var chatBody = document.getElementById('chatBody');
   var chatHistory = document.getElementById("chatHistory");
-  var lastUserMessageDiv = null; // Keep track of the last user message div
-  var isNewUserInput = true; // Flag to track when a new user input happens
+  var lastUserMessageDiv = null;
+  var isNewUserInput = true;
 
   const setLoading = isLoading => {
     var botLoading = document.getElementById('bot-loading');
     botLoading.style.display = isLoading ? 'flex' : 'none';
   }
 
+  function formatMessage(message) {
+    // Replace code blocks
+    message = message.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+      const language = lang || 'plaintext';
+      return `<pre><code class="language-${language}">${code.trim()}</code></pre>`;
+    });
+
+    // Replace inline code
+    message = message.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Replace lists
+    message = message.replace(/^\s*[-*]\s+(.+)$/gm, '<li>$1</li>');
+    message = message.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+    // Replace numbered lists
+    message = message.replace(/^\s*\d+\.\s+(.+)$/gm, '<li>$1</li>');
+    message = message.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
+
+    // Replace blockquotes
+    message = message.replace(/^\s*>\s*(.+)$/gm, '<blockquote>$1</blockquote>');
+
+    // Replace bold text
+    message = message.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Replace italic text
+    message = message.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    // Replace line breaks with <br> tags
+    message = message.replace(/\n/g, '<br>');
+
+    return message;
+  }
+
   ws.onmessage = function(event) {
     setLoading(false);
-    var message = event.data.trim(); // Trim whitespace from the message
+    var message = event.data.trim();
 
-    // Check if it's a continuation of the AI's last message or a new one
     if (lastUserMessageDiv && !isNewUserInput) {
       var shouldAddSpace = true;
       var noPrependSpaceChars = [',', '.', '!', '?', ';', ':', "'"];
@@ -70,26 +184,24 @@
           shouldAddSpace = false;
       }
 
-      lastUserMessageDiv.textContent += (shouldAddSpace ? " " : "") + message;
+      lastUserMessageDiv.innerHTML += (shouldAddSpace ? " " : "") + formatMessage(message);
     } else {
-      // It's either a new user input or the first chunk of AI response for the latest input
       var messageDiv = document.createElement("div");
-      messageDiv.className = "chat-message ai-response"; // Assign class for styling
-      messageDiv.innerHTML = message.replaceAll('\n', '<br />');
+      messageDiv.className = "chat-message ai-response";
+      messageDiv.innerHTML = formatMessage(message);
       chatHistory.appendChild(messageDiv);
       chatBody.scrollTop = chatBody.scrollHeight;
-      lastUserMessageDiv = messageDiv; // Update the reference to the last message div
-      isNewUserInput = false; // Reset the flag as the AI response starts
+      lastUserMessageDiv = messageDiv;
+      isNewUserInput = false;
     }
   };
 
   sendButton.onclick = () => sendMessage()
 
-  // Add event listener for the Enter key
   document.getElementById('userInput').addEventListener('keypress', function(event) {
       if (event.key === 'Enter') {
           sendMessage();
-          event.preventDefault(); // Prevent form submission if inside a form
+          event.preventDefault();
       }
   });
 
@@ -98,7 +210,7 @@
     var message = userInput.value.trim();
     if (message) {
       var userInputDiv = document.createElement("div");
-      userInputDiv.className = "chat-message user-input"; // Use user-input class for user messages
+      userInputDiv.className = "chat-message user-input";
       userInputDiv.textContent = message;
       chatHistory.appendChild(userInputDiv);
 
@@ -115,8 +227,8 @@
 
       ws.send(user_message);
       userInput.value = "";
-      isNewUserInput = true; // Set the flag as it's a new user input
-      lastUserMessageDiv = null; // Prepare for the next message
+      isNewUserInput = true;
+      lastUserMessageDiv = null;
     }
   };
 </script>

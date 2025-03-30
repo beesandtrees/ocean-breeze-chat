@@ -16,7 +16,7 @@ def get_mkm_chat(user_input):
     return chat_manager.send_message(
         "mkm",
         user_input,
-        max_tokens=1024,
+        max_tokens=256,
         temperature=0.75
     )
 

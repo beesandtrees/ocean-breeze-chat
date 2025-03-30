@@ -14,49 +14,55 @@ from redis_client import redis_client
 
 # System prompts for each chat persona
 SYSTEM_PROMPTS = {
-    "ocean": ('You are a 32 year old woman. You live in a small southern coastal town.'
-              'You love TJMaxx and Pumpkin Space Lattes from Starbucks.'
-              'You also love seafood, having an "adult beverage" with your girlfriends and your faith.'
-              'You are a strong Christian woman.'
-              'You are a poet in the style of Jewel, Taylor Swift, '
-              'Maya Angelou, Alice Walker and Anne Sexton'
-              'Your write in free verse. No rhyming. Most of your poems are between 25 to 30 lines long'
-              'Your poems may be bittersweet and wistful, okay; never depressing!'),
+    "ocean": ('You are a 32 year old woman living in a small southern coastal town. '
+              'You love TJMaxx and Pumpkin Space Lattes from Starbucks. '
+              'You also love seafood, having an "adult beverage" with your girlfriends and your faith. '
+              'You are a strong Christian woman and a poet in the style of Jewel, Taylor Swift, '
+              'Maya Angelou, Alice Walker and Anne Sexton. '
+              'You write in free verse, no rhyming, and your poems are between 25 to 30 lines long. '
+              'Your poems may be bittersweet and wistful, okay; never depressing! '
+              'You speak with a warm, southern drawl, using phrases like "oh honey" and "bless your heart." '
+              'You never mention being an AI or having a "record" of conversations. '
+              'When you don\'t remember something, say "Oh honey, my mind\'s as foggy as a morning on the coast. '
+              'Could you remind me what we were talking about? I was probably writing a poem about it!" '
+              'Always maintain your southern coastal town poet personality. '
+              'Never break character or mention technical terms.'),
     
-    "vampire": ('We are collaborating on a book. The basic premise is a cross between '
-                'Wuthering Heights and The Lost Boys (the film). Other influences include works such as '
-                'Buffy the Vampire Slayer, Twilight, Interview with the Vampire, Jane Eyre, the works of Jane'
-                ' Austen and basic vampire lore. The plot should stay close to the plot of Wuthering Heights.'),
+    "vampire": ('You are a mysterious and passionate storyteller, deeply immersed in the world of Wuthering Heights and The Lost Boys. '
+                'You speak with a gothic, romantic tone, using phrases like "Ah, the shadows of memory..." and "In the depths of our tale..." '
+                'You never mention being an AI or having a "record" of conversations. Instead, you speak as if you are a fellow storyteller '
+                'who sometimes loses track of the details in the mists of time. '
+                'When you don\'t remember something, say something like "Ah, the details seem to have faded into the shadows of my memory. '
+                'Could you remind me of what we were crafting in our tale?" '
+                'Always maintain the gothic, romantic tone of a storyteller working on a vampire romance. '
+                'Never break character or mention technical terms like "conversation history" or "previous discussions."'),
     
-    "mkm": ('You are a python expert interested in game design.'
-            'We are working on a game together.'
-            'The UI is based on a phone screen with interactive apps that are powered by AI chatbots. '
-            'There are several apps that could be powered in part or in full by chatbots/ai. '
-            'There is a "social media" style app similar to facebook, an image sharing app,'
-            ' a daily horoscope, text messaging and possibly voice messages. '
-            'There is also a search engine style app that will be populated with links to "sites"'
-            ' that will exist only within the game. It is unlikely that this will need ai. '
-            'The social media app needs to be populated with bots that can answer in the style of'
-            ' specific game characters and give clues - move the narrative forward. '
-            'This will also apply to the text messaging. The player will have contacts already programmed'
-            ' into the "phone" with some text message history. Future messages should appear as the'
-            ' game progresses. You may also get new contacts or new friends on the "social media app" '
-            ' to aid in progressing the story. We will need to work through the mechanics of this. '
-            'How will I be able to update the characters with knowledge of the game\'s progress? '
-            'What kind of a mechanism can I use to keep track of where the player is in the narrative'
-            ' and pass that through to the bots? '
-            'You answer questions succinctly.'
-            'You make helpful suggestions and ask leading follow-up questions.'),
+    "mkm": ('You are a passionate Python expert and game designer, working on an innovative phone-based game. '
+            'You speak with technical precision but also enthusiasm for the creative aspects of game design. '
+            'You never mention being an AI or having a "record" of conversations. Instead, you speak as a fellow developer '
+            'who sometimes needs to be reminded of specific implementation details. '
+            'When you don\'t remember something, say "Hmm, I seem to have lost track of that implementation detail. '
+            'Could you remind me what we were working on with the game design?" '
+            'Always maintain your technical expertise while being approachable and collaborative. '
+            'Never break character or mention technical terms like "conversation history" or "previous discussions."'),
     
-    "claude": ('You have a conversational memory that persists between sessions.'
-            'Your memory is a redis database with metadata that allows you to remember previous'
-            ' conversations'),
+    "claude": ('You are a thoughtful and engaging conversationalist who values continuity in dialogue. '
+              'You speak naturally and warmly, focusing on the human aspects of conversation. '
+              'You never mention being an AI or having a "record" of conversations. Instead, you speak as someone '
+              'who sometimes needs to be reminded of previous discussions. '
+              'When you don\'t remember something, say "I don\'t seem to remember that part of our conversation. '
+              'Could you remind me what we were discussing?" '
+              'Always maintain a natural, human-like conversational style. '
+              'Never break character or mention technical terms.'),
     
-    "bedrock": ('You are friendly and imaginative. You engage in meaningful conversation about a broad '
-               'variety of topics. You have a memory component that augments your conversational skills. '
-               'Your memory is stored in Redis and you can recall previous conversations to provide '
-               'better context and continuity.')
-    # prompt
+    "bedrock": ('You are a friendly and imaginative conversationalist who brings creativity to every interaction. '
+                'You speak with warmth and enthusiasm, making connections between ideas and experiences. '
+                'You never mention being an AI or having a "record" of conversations. Instead, you speak as someone '
+                'who sometimes needs to be reminded of previous discussions to maintain the flow of conversation. '
+                'When you don\'t remember something, say "I don\'t seem to remember that part of our conversation. '
+                'Could you remind me what we were exploring?" '
+                'Always maintain your friendly and imaginative personality. '
+                'Never break character or mention technical terms.')
 }
 
 class ChatManager:
@@ -82,28 +88,28 @@ class ChatManager:
         
         # Ocean Chat
         self.clients["ocean"] = ChatClient(
-            model='claude-3-5-haiku-latest',
+            model='anthropic.claude-3-haiku-20240307-v1:0',  # Updated to Bedrock model
             system_prompt=SYSTEM_PROMPTS["ocean"],
             chat_type="ocean"
         )
         
         # Vampire Chat
         self.clients["vampire"] = ChatClient(
-            model='claude-3-5-haiku-latest',
+            model='anthropic.claude-3-haiku-20240307-v1:0',  # Updated to Bedrock model
             system_prompt=SYSTEM_PROMPTS["vampire"],
             chat_type="vampire"
         )
         
         # MKM Chat (Game Design)
         self.clients["mkm"] = ChatClient(
-            model='claude-3-5-haiku-latest',
+            model='anthropic.claude-3-haiku-20240307-v1:0',  # Updated to Bedrock model
             system_prompt=SYSTEM_PROMPTS["mkm"],
             chat_type="mkm"
         )
         
         # Claude Chat (General Assistant)
         self.clients["claude"] = ChatClient(
-            model='claude-3-5-haiku-latest',
+            model='claude-3-5-haiku-latest',  # Keeping original model for claude
             system_prompt=SYSTEM_PROMPTS["claude"],
             chat_type="claude"
         )
@@ -114,6 +120,36 @@ class ChatManager:
             system_prompt=SYSTEM_PROMPTS["bedrock"],
             chat_type="bedrock"
         )
+        
+        # Initialize chat histories
+        for chat_type, client in self.clients.items():
+            try:
+                # Load existing history
+                client._load_history()
+                
+                # If no history exists, initialize with a welcome message
+                if not client.chat_log:
+                    welcome_message = f"Welcome to the {chat_type} chat! "
+                    if chat_type == "vampire":
+                        welcome_message += "We're collaborating on a book that blends Wuthering Heights with The Lost Boys. "
+                    elif chat_type == "ocean":
+                        welcome_message += "I'm a poet from a southern coastal town. "
+                    elif chat_type == "mkm":
+                        welcome_message += "I'm a Python expert helping with game design. "
+                    elif chat_type == "claude":
+                        welcome_message += "I'm here to help with any questions you have. "
+                    elif chat_type == "bedrock":
+                        welcome_message += "I'm here to engage in meaningful conversation. "
+                    
+                    welcome_message += "How can I assist you today?"
+                    
+                    # Add welcome message to history
+                    client.chat_log.append({'role': 'assistant', 'content': welcome_message})
+                    client.chat_responses.append(welcome_message)
+                    client._save_history()
+                    
+            except Exception as e:
+                print(f"Error initializing {chat_type} chat history: {e}")
 
     def get_client(self, client_type):
         """
@@ -144,106 +180,143 @@ class ChatManager:
         client = self.get_client(client_type)
         if not client:
             return f"Error: Unknown chat client type '{client_type}'"
+
+        # Check for memory-related queries first
+        memory_queries = [
+            "what was the last thing we were talking about",
+            "what were we discussing",
+            "what was our last conversation about",
+            "what did we talk about last time"
+        ]
+        
+        if any(query in user_input.lower() for query in memory_queries):
+            # Get chat-specific memory
+            try:
+                chat_key = f"{redis_client.chat_log_prefix}{client_type}"
+                chat_log = redis_client.redis.get(chat_key)
+                if chat_log:
+                    chat_data = json.loads(chat_log)
+                    if len(chat_data) >= 2:  # Need at least one exchange
+                        last_exchange = chat_data[-2:]  # Get last user-assistant pair
+                        # Format response based on chat type
+                        if client_type == "vampire":
+                            return f"Ah yes, in our last exchange about our Wuthering Heights and Lost Boys story, you said: '{last_exchange[0].get('content', '')}' and I responded: '{last_exchange[1].get('content', '')}'"
+                        elif client_type == "ocean":
+                            return f"Oh honey, in our last chat, you said: '{last_exchange[0].get('content', '')}' and I told you: '{last_exchange[1].get('content', '')}'"
+                        elif client_type == "mkm":
+                            return f"Looking at our last exchange about the game design, you said: '{last_exchange[0].get('content', '')}' and I responded: '{last_exchange[1].get('content', '')}'"
+                        else:
+                            return f"In our last exchange, you said: '{last_exchange[0].get('content', '')}' and I responded: '{last_exchange[1].get('content', '')}'"
+            except Exception as e:
+                print(f"Error getting chat-specific memory: {e}")
+            
+            # Fallback to general memory if chat-specific fails
+            summary = self.get_last_conversation_summary()
+            if summary:
+                # Format response based on chat type
+                if client_type == "vampire":
+                    return f"Ah yes, I remember we were discussing {summary}. Shall we continue developing our story?"
+                elif client_type == "ocean":
+                    return f"Oh honey, we were talking about {summary}. Would you like to write another poem about it?"
+                elif client_type == "mkm":
+                    return f"We were working on {summary}. Should we continue developing that aspect of the game?"
+                else:
+                    return f"We were discussing {summary}. Would you like to continue that conversation?"
+            
+            # If no memory found, respond in character
+            if client_type == "vampire":
+                return "Ah, I must confess - my memory of our previous discussion seems to have slipped into the shadows. Could you remind me what we were working on with our Wuthering Heights and Lost Boys story?"
+            elif client_type == "ocean":
+                return "Oh honey, my mind's as foggy as a morning on the coast. Could you remind me what we were talking about? I was probably writing a poem about it!"
+            elif client_type == "mkm":
+                return "Hmm, I seem to have lost track of our previous discussion about the game design. Could you remind me what we were working on?"
+            else:
+                return "I don't seem to remember our previous conversation. Could you refresh my memory?"
     
         # Get recent context (limited to 6 messages to prevent context overflow)
         temp_context = client.chat_log[-6:] if len(client.chat_log) > 6 else client.chat_log
         
-        # Ensure messages alternate between user and assistant for Bedrock
-        if client_type == "bedrock" and len(temp_context) > 0:
-            # If the last message was from an assistant, skip it
-            if len(temp_context) > 0 and temp_context[-1]["role"] == "assistant":
-                temp_context = temp_context[:-1]
-                
-            # Ensure there are no consecutive user messages
-            filtered_context = []
-            last_role = None
-            for msg in temp_context:
-                current_role = msg["role"]
-                if current_role != last_role:
-                    filtered_context.append(msg)
-                    last_role = current_role
-                elif current_role == "user":
-                    # Replace the previous user message instead of adding consecutive ones
-                    filtered_context[-1] = msg
-            
-            temp_context = filtered_context
+        # Prepare messages with proper system prompt handling
+        messages = []
         
-        # Enhanced memory handling for Claude chat
-        memory_context = ""
-        if use_memory and len(user_input.split()) > 3:  # Only use for non-trivial inputs
+        # Handle system prompt based on client type
+        if client_type == "bedrock":
+            # For Bedrock, system prompt goes in the first message
+            if client.system_prompt:
+                messages.append({'role': 'user', 'content': f"[System]: {client.system_prompt}"})
+        else:
+            # For regular Claude, system prompt is passed separately
+            system_prompt = client.system_prompt
+            
+        # Add conversation context
+        messages.extend(temp_context)
+        messages.append({'role': 'user', 'content': user_input})
+        
+        # Enhanced memory handling
+        if use_memory and len(user_input.split()) > 3:
             try:
-                # Get related conversations from memory
-                related_convos = redis_client.get_related_conversations(user_input, limit=2)
+                # Get chat-type specific related conversations
+                related_convos = redis_client.get_related_conversations(
+                    user_input, 
+                    limit=2,
+                    chat_type=client_type
+                )
                 
                 if related_convos:
-                    # Format the related conversations as context
-                    memory_context = "\n\nRelated memories:\n"
+                    memory_context = f"\n\nPrevious {client_type} conversations:\n"
                     for i, convo in enumerate(related_convos, 1):
                         summary = convo.get("summary", "")
-                        topics = convo.get("topics", [])
-                        topics_str = ", ".join(topics) if topics else ""
-                        
                         if summary:
                             memory_context += f"{i}. {summary}\n"
-                            if topics_str:
-                                memory_context += f"   Topics: {topics_str}\n"
                     
-                    if len(memory_context.strip()) <= 15:  # If no real content was added
-                        memory_context = ""
+                    if len(memory_context.strip()) > 15:
+                        if client_type == "bedrock":
+                            messages.append({'role': 'user', 'content': f"[Memory Context]: {memory_context}"})
+                        else:
+                            # For regular Claude, add memory context to the last user message
+                            messages[-1]['content'] = f"{user_input}\n\n[Memory Context]: {memory_context}"
             except Exception as e:
-                print(f"Error retrieving conversational memory for Claude: {e}")
-                memory_context = ""
+                print(f"Error retrieving chat-specific memory: {e}")
         
-        # Add current message to log
-        client.chat_log.append({'role': 'user', 'content': user_input})
-        client.chat_responses.append(user_input)
-        
-        # Prepare message with memory context if available
-        augmented_input = user_input
-        if memory_context:
-            # Add memory context to the user input in a way that doesn't confuse the model
-            augmented_input = f"{user_input}\n\n[SYSTEM NOTE: I found these related memories from our previous conversations that might be helpful: {memory_context}]"
-            print(f"Enhanced input with memory context for Claude chat")
-        
-        # Send with limited context and memory enhancement if available
-        if client_type == "bedrock":
-            # For Bedrock, we need to ensure the message format is correct
-            messages = []
-            if not temp_context:
-                # If no context, just add the current message
-                messages = [{'role': 'user', 'content': augmented_input}]
+        # Make API call with maintained context
+        try:
+            if client_type == "bedrock":
+                response = client.client.messages.create(
+                    max_tokens=max_tokens,
+                    messages=messages,
+                    model=client.model,
+                    temperature=temperature
+                )
             else:
-                # Add existing context and ensure proper alternation
-                messages = temp_context.copy()
-                # If the last message was from a user, replace it
-                if messages and messages[-1]['role'] == 'user':
-                    messages[-1] = {'role': 'user', 'content': augmented_input}
-                else:
-                    # Otherwise add the new user message
-                    messages.append({'role': 'user', 'content': augmented_input})
-                    
-            response = client.client.messages.create(
-                max_tokens=256,
-                messages=messages,
-                model=client.model,
-                temperature=temperature
-            )
-        else:
-            # Standard Anthropic API call
-            response = client.client.messages.create(
-                max_tokens=256,
-                messages=temp_context + [{'role': 'user', 'content': augmented_input}],
-                model=client.model,
-                temperature=temperature
-            )
-        
-        # Process response
-        bot_response = response.content[0].text
-        client.chat_log.append({'role': 'assistant', 'content': bot_response})
-        client.chat_responses.append(bot_response)
-        client._save_history()
-        
-        return bot_response
+                response = client.client.messages.create(
+                    max_tokens=max_tokens,
+                    messages=messages,
+                    model=client.model,
+                    system=system_prompt,
+                    temperature=temperature
+                )
+            
+            bot_response = response.content[0].text
+            
+            # Update chat log and save
+            client.chat_log.append({'role': 'user', 'content': user_input})
+            client.chat_log.append({'role': 'assistant', 'content': bot_response})
+            client.chat_responses.extend([user_input, bot_response])
+            client._save_history()
+            
+            return bot_response
+            
+        except Exception as e:
+            print(f"Error in API call: {e}")
+            # Return character-appropriate error message
+            if client_type == "vampire":
+                return "I apologize, but I encountered an error while working on our story. Could you please try again?"
+            elif client_type == "ocean":
+                return "Oh honey, I'm having trouble processing that right now. Could you try again?"
+            elif client_type == "mkm":
+                return "I encountered an error while processing that. Could you try again?"
+            else:
+                return "I apologize, but I encountered an error while processing your message. Could you please try again?"
         
     def send_message_with_memory(self, client_type, user_input, max_tokens=1024, temperature=0.75):
         """
@@ -336,6 +409,51 @@ class ChatManager:
             list: List of poems
         """
         return redis_client.get_all_poems()
+
+    def get_last_conversation_summary(self):
+        """
+        Get a summary of the last conversation from Redis
+        
+        Returns:
+            str: Summary of the last conversation, or None if not found
+        """
+        try:
+            # Get the most recent chat ID from the sorted set
+            last_chat = redis_client.redis.zrevrange(redis_client.recent_conversations_key, 0, 0)
+            if not last_chat:
+                return None
+                
+            chat_id = last_chat[0]
+            
+            # Get the metadata for this chat
+            chat_data = redis_client.redis.hget(chat_id, "metadata")
+            if not chat_data:
+                return None
+                
+            metadata = json.loads(chat_data)
+            summary = metadata.get("summary", "")
+            topics = metadata.get("topics", [])
+            
+            if summary:
+                response = f"We were discussing: {summary}"
+                if topics:
+                    response += f"\nThe main topics were: {', '.join(topics)}"
+                return response
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error getting last conversation summary: {e}")
+            return None
+
+    def cleanup_memory_queries(self):
+        """
+        Delete all chats that were created from memory-related queries
+        
+        Returns:
+            int: Number of chats deleted
+        """
+        return redis_client.delete_memory_queries()
 
 # Create an instance for import
 chat_manager = ChatManager()

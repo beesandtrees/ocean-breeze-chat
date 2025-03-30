@@ -88,5 +88,15 @@
             "role": "assistant",
             "content": "Here's a three-line poem about the tide:\n\nSaltwater Pulse\n\nWaves breathe in, breathe out\nPulling sand secrets from the shore's soft memory\nGod's rhythm, constant as my own heartbeat"
         }
+    ],
+    [
+        {
+            "role": "user",
+            "content": "what was the last thing we were talking about?"
+        },
+        {
+            "role": "assistant",
+            "content": "I'm afraid I don't have any memory of a previous conversation with you. As an AI assistant, I don't have a persistent memory of prior interactions. Each conversation starts fresh for me. Could you please provide some more context about what you'd like to discuss?"
+        }
     ]
 ]
