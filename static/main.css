@@ -25,7 +25,7 @@
   word-wrap: break-word;
 }
 
-.chat-message.user-input {
+.chat-message.user-message {
   align-self: flex-end;
   background-color: var(--pico-primary-background);
   color: white;
