@@ -13,11 +13,11 @@ The enhanced memory system provides:
 
 ## Architecture
 
-The enhanced memory system uses Redis as a foundation with these key components:
+The enhanced memory system uses SQLite as a foundation with these key components:
 
 ### 1. Memory Storage
 
-Conversations are stored in Redis with:
+Conversations are stored in SQLite with:
 - **Conversation content** - The raw chat log
 - **Metadata** - Topics, sentiment, summary, etc.
 - **Search indexes** - For efficient retrieval by content and metadata
@@ -59,59 +59,114 @@ The system maintains memory health by:
 
 ## Implementation Details
 
-### Redis Schema
+### SQLite Schema
 
-The system uses these Redis data structures:
-- **Hash** for storing conversation content
-- **Sorted sets** for time-based organization
-- **RedisJSON** for storing structured metadata
-- **RediSearch** for advanced search capabilities
+The system uses these SQLite tables:
+- **conversations** for storing conversation content and metadata
+- **chat_types** for organizing conversations by type
+- **metadata** for storing structured metadata
+- **search_index** for efficient content search
 
-### Key Redis Commands
+### Key SQLite Operations
 
-- `ZADD` - Add to time-ordered sets
-- `ZREM` - Remove from sets
-- `JSON.SET` - Store structured metadata
-- `FT.SEARCH` - Search by content and metadata
+- `INSERT` - Add new conversations
+- `UPDATE` - Modify existing conversations
+- `SELECT` - Retrieve conversations and metadata
+- `DELETE` - Remove outdated conversations
 
 ## Usage Examples
 
 ### Storing with Metadata
 
 ```python
-chat_id = redis_client.store_conversation_with_metadata(
+chat_id = db.store_conversation(
     chat_type="ocean",
     conversation=chat_log,
-    user_id="user123"
+    user_id="user123",
+    metadata={
+        "topics": ["beach", "poetry"],
+        "summary": "Discussion about coastal life",
+        "sentiment": "positive"
+    }
 )
 ```
 
 ### Finding Related Conversations
 
 ```python
-related = redis_client.get_related_conversations(
-    "Tell me about the beach"
+related = db.get_related_conversations(
+    "Tell me about the beach",
+    limit=5
 )
 ```
 
 ### Memory-Enhanced Chat
 
 ```python
-response = chat_manager.send_message_with_memory(
-    client_type="ocean",
-    user_input="What was that poem about the waves?"
+response = chat_manager.send_message(
+    "ocean",
+    user_input,
+    max_tokens=1024,
+    temperature=0.75
 )
 ```
 
-## Future Improvements
+## Memory Tiers
 
-Possible enhancements include:
+The system implements a tiered memory approach:
 
-1. **Embedding-based retrieval** - Use vector embeddings for more accurate semantic search
-2. **Adaptive memory prioritization** - Learn which memories are most useful based on user interactions
-3. **Cross-conversation memory** - Allow memories to be shared across different chat types
-4. **Memory consolidation** - Periodically summarize and compress old memories
-5. **Sentiment-aware retrieval** - Match the emotional tone of memories with current conversation
+1. **Immediate Memory**
+   - Most recent conversations (last 2)
+   - Full conversation context
+   - Used for immediate continuity
+
+2. **Recent Memory**
+   - Last 5 conversations
+   - Detailed summaries
+   - Used for short-term context
+
+3. **Long-term Memory**
+   - Last 10 conversations
+   - Brief mentions
+   - Used for topic relevance
+
+## Memory Integration
+
+The memory system is integrated into the chat flow:
+
+1. **Input Processing**
+   - Analyze user input for memory triggers
+   - Extract key topics and entities
+   - Search for relevant memories
+
+2. **Context Building**
+   - Combine immediate context with relevant memories
+   - Format memory context naturally
+   - Include in system prompt
+
+3. **Response Generation**
+   - Generate response with memory context
+   - Update conversation history
+   - Extract and store new metadata
+
+## Future Enhancements
+
+Planned improvements include:
+
+1. **Advanced Topic Extraction**
+   - Use Claude for better topic identification
+   - Implement hierarchical topic structure
+   - Add topic relationships
+
+2. **Memory Compression**
+   - Implement better summarization
+   - Add memory importance scoring
+   - Optimize storage usage
+
+3. **Enhanced Search**
+   - Add semantic search capabilities
+   - Implement fuzzy matching
+   - Add time-based filtering
 
 ## Testing the Enhanced Memory
 

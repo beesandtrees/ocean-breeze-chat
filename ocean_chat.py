@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from chat_manager import chat_manager
-from redis_client import redis_client
+from sqlite_client import SQLiteClient
 
 load_dotenv()
 
@@ -28,13 +28,22 @@ def get_ocean_chat_pair():
     Returns:
         list: The last user message and assistant response
     """
-    return chat_manager.get_recent_messages("ocean", count=2)
+    messages = chat_manager.get_recent_messages("ocean", count=2)
+    if len(messages) >= 2:
+        return messages[-2:]
+    return []
 
 def get_poems_list():
     """
-    Load and parse poems from Redis
+    Get poems from the ocean chat
     
     Returns:
         list: List of poems from the assistant
     """
-    return chat_manager.get_all_poems()
+    # Get recent messages from the ocean chat
+    messages = chat_manager.get_recent_messages("ocean", count=10)
+    poems = []
+    for msg in messages:
+        if msg.get('role') == 'assistant' and msg.get('content'):
+            poems.append(msg['content'])
+    return poems

@@ -8,14 +8,22 @@ Acts as a substitute for the Anthropic client with a compatible interface.
 import json
 import os
 import time
+import boto3
 from typing import Dict, List, Any
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from datetime import datetime
-from memory_palace.config import get_aws_session
 
 # Ensure environment variables are loaded
 load_dotenv()
+
+def get_aws_session():
+    """Create and return an AWS session"""
+    return boto3.Session(
+        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+        region_name=os.getenv('AWS_REGION', 'us-east-1')
+    )
 
 # Get AWS session
 aws_session = get_aws_session()

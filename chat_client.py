@@ -10,7 +10,7 @@ import re
 load_dotenv()
 
 class ChatClient:
-    def __init__(self, chat_type=None, model="claude-3-sonnet-20240229", system_prompt=""):
+    def __init__(self, chat_type=None, model="claude-3-sonnet-20240229", system_prompt="", client_class=None):
         """
         Initialize a chat client.
         
@@ -18,6 +18,7 @@ class ChatClient:
             chat_type (str): The type of chat (ocean, vampire, etc.) for SQLite storage
             model (str): The model to use for chat
             system_prompt (str): System prompt to use for the conversation
+            client_class: The client class to use (e.g., BedrockClient)
         """
         self.chat_type = chat_type
         self.chat_log = []
@@ -32,11 +33,15 @@ class ChatClient:
         if chat_type:
             self.load_chat_history()
             
-        # Initialize Anthropic client
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable not set")
-        self.client = anthropic.Anthropic(api_key=api_key)
+        # Initialize client
+        if client_class:
+            self.client = client_class()
+        else:
+            # Initialize Anthropic client
+            api_key = os.getenv('ANTHROPIC_API_KEY')
+            if not api_key:
+                raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+            self.client = anthropic.Anthropic(api_key=api_key)
             
     def load_chat_history(self):
         """Load chat history from SQLite"""

@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from chat_manager import chat_manager
-from redis_client import redis_client
+from sqlite_client import SQLiteClient
 import json
 
 load_dotenv()
@@ -20,26 +20,10 @@ def get_vampire_chat(user_input):
         "vampire",
         user_input,
         max_tokens=1024,
-        temperature=0.75,
-        use_memory=True  # Ensure memory is used
+        temperature=0.75
     )
     
-    # Store the conversation in Redis with proper metadata
-    try:
-        chat_key = f"{redis_client.chat_log_prefix}vampire"
-        chat_log = redis_client.redis.get(chat_key)
-        if chat_log:
-            chat_data = json.loads(chat_log)
-            if len(chat_data) >= 2:  # Need at least one exchange
-                # Store with metadata
-                redis_client.store_conversation_with_metadata(
-                    chat_type="vampire",
-                    conversation=chat_data,
-                    user_id="system"
-                )
-    except Exception as e:
-        print(f"Error storing vampire chat metadata: {e}")
-    
+    # The chat manager now handles storing conversations and metadata
     return response
 
 def get_vampire_chat_pair():
@@ -49,4 +33,8 @@ def get_vampire_chat_pair():
     Returns:
         list: The last user message and assistant response
     """
-    return chat_manager.get_recent_messages("vampire", count=2)
+    # Get recent messages from the chat manager
+    messages = chat_manager.get_recent_messages("vampire", count=2)
+    if len(messages) >= 2:
+        return messages[-2:]
+    return []

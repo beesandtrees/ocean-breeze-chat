@@ -6,7 +6,7 @@ import json
 import time
 import boto3
 from datetime import datetime
-from redis_client import redis_client
+from sqlite_client import SQLiteClient
 from dotenv import load_dotenv
 
 # Ensure environment variables are loaded
@@ -103,6 +103,9 @@ def process_single_conversation():
     # Initialize Bedrock client
     bedrock_client = initialize_bedrock_client()
     
+    # Initialize SQLite client
+    db = SQLiteClient()
+    
     # Load the test conversation
     with open('chat_logs/vampire-heights.json', 'r') as f:
         data = json.load(f)
@@ -148,18 +151,14 @@ def process_single_conversation():
         # Add timestamp to metadata
         metadata['timestamp'] = int(time.time())
         
-        # Generate a unique chat ID
-        chat_id = f"chat:{redis_client.redis.incr('chat_id_counter')}"
-        
-        # Store in Redis
-        print("\nStoring in Redis...")
-        conversation_json = json.dumps(conversation)
-        redis_client.redis.hset(chat_id, mapping={
-            "conversation": conversation_json,
-            "chat_type": "vampire",  # Updated chat type
-            "user_id": "system",
-            "metadata": json.dumps(metadata)
-        })
+        # Store in SQLite
+        print("\nStoring in SQLite...")
+        chat_id = db.store_conversation(
+            conversation=conversation,
+            chat_type="vampire",
+            user_id="system",
+            metadata=metadata
+        )
         
         print(f"Successfully stored conversation with ID: {chat_id}")
         
